@@ -75,6 +75,269 @@
     opacity: 0;
   }
 
+  /* GEAR BUTTON */
+  .gear-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 100;
+    width: 38px;
+    height: 38px;
+    background: rgba(13,13,15,0.85);
+    border: 1px solid var(--border);
+    border-top-color: var(--border-hi);
+    border-radius: 10px;
+    color: var(--muted);
+    font-size: 16px;
+    cursor: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    backdrop-filter: blur(16px);
+    opacity: 0;
+    animation: fadeUp 0.7s ease forwards 0.9s;
+  }
+  .gear-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.12); }
+
+  /* SETTINGS MODAL */
+  .settings-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .settings-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .settings-modal {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%) translateY(100%);
+    z-index: 201;
+    width: min(580px, 96vw);
+    max-height: 85vh;
+    background: #0d0d0f;
+    border: 1px solid var(--border);
+    border-top-color: rgba(255,255,255,0.1);
+    border-bottom: none;
+    border-radius: 16px 16px 0 0;
+    overflow-y: auto;
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.06) transparent;
+  }
+  .settings-modal.open {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: #0d0d0f;
+    z-index: 1;
+  }
+
+  .settings-title {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    color: var(--text);
+    font-weight: 400;
+  }
+
+  .settings-close {
+    width: 28px;
+    height: 28px;
+    background: rgba(24,24,28,0.9);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: #666;
+    font-size: 14px;
+    cursor: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .settings-close:hover { color: #f87171; border-color: rgba(248,113,113,0.2); }
+
+  .settings-body {
+    padding: 20px 24px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .settings-section-title {
+    font-size: 10px;
+    color: #333;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    padding-left: 2px;
+  }
+
+  /* BACKGROUND PICKER */
+  .bg-options {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .bg-option {
+    aspect-ratio: 16/10;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    cursor: none;
+    overflow: hidden;
+    position: relative;
+    transition: all 0.2s;
+    background: var(--surface);
+  }
+  .bg-option:hover { border-color: rgba(255,255,255,0.15); transform: translateY(-1px); }
+  .bg-option.active {
+    border-color: rgba(200,240,160,0.4);
+    box-shadow: 0 0 12px rgba(200,240,160,0.1);
+  }
+  .bg-option canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .bg-option-label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 4px 6px;
+    font-size: 9px;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.05em;
+    background: linear-gradient(transparent, rgba(0,0,0,0.7));
+    text-align: center;
+  }
+  .bg-option.active .bg-option-label { color: var(--accent); }
+
+  /* PANIC KEY */
+  .panic-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .panic-key-display {
+    width: 44px;
+    height: 44px;
+    background: rgba(13,13,15,0.85);
+    border: 1px solid var(--border);
+    border-top-color: var(--border-hi);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--accent);
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+  .panic-key-display.listening {
+    border-color: rgba(200,240,160,0.3);
+    box-shadow: 0 0 12px rgba(200,240,160,0.08);
+    color: #fff;
+    animation: blink 0.8s ease infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .panic-set-btn {
+    padding: 10px 14px;
+    background: rgba(13,13,15,0.85);
+    border: 1px solid var(--border);
+    border-top-color: var(--border-hi);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: none;
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .panic-set-btn:hover { color: #aaa; border-color: rgba(255,255,255,0.1); }
+  .panic-set-btn.listening { color: var(--accent); border-color: rgba(200,240,160,0.2); }
+
+  .panic-hint {
+    font-size: 10px;
+    color: #333;
+    letter-spacing: 0.04em;
+    line-height: 1.5;
+  }
+
+  /* CLOAK SECTION (moved from tab) */
+  .cloak-label {
+    font-size: 10px;
+    color: #333;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    padding-left: 2px;
+  }
+
+  .cloak-presets {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .cloak-preset {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 10px 6px;
+    background: rgba(13,13,15,0.85);
+    border: 1px solid var(--border);
+    border-top-color: rgba(255,255,255,0.07);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    cursor: none;
+    transition: all 0.15s;
+    letter-spacing: 0.03em;
+    backdrop-filter: blur(16px);
+  }
+  .cloak-preset img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    border-radius: 3px;
+  }
+  .cloak-preset:hover { color: #aaa; border-color: rgba(255,255,255,0.1); }
+  .cloak-preset.active {
+    background: rgba(200,240,160,0.07);
+    border-color: rgba(200,240,160,0.2);
+    border-top-color: rgba(200,240,160,0.3);
+    color: var(--accent);
+  }
+
   .app {
     position: relative;
     z-index: 1;
@@ -140,9 +403,7 @@
     transition: color 0.18s ease;
     letter-spacing: 0.04em;
   }
-
   .tab:hover { color: #aaa; }
-
   .tab.active {
     background: var(--surface2);
     color: var(--text);
@@ -186,9 +447,7 @@
     text-align: center;
     backdrop-filter: blur(16px);
   }
-
   .engine-btn:hover { color: #aaa; border-color: rgba(255,255,255,0.1); }
-
   .engine-btn.active {
     background: rgba(200,240,160,0.07);
     border-color: rgba(200,240,160,0.2);
@@ -217,7 +476,6 @@
     backdrop-filter: blur(16px);
     box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 32px rgba(0,0,0,0.3);
   }
-
   .proxy-bar:focus-within {
     border-color: rgba(200,240,160,0.18);
     border-top-color: rgba(200,240,160,0.28);
@@ -237,7 +495,6 @@
     font-weight: 300;
     cursor: none;
   }
-
   .proxy-input::placeholder { color: #3a3a3a; }
 
   .proxy-btn {
@@ -255,7 +512,6 @@
     letter-spacing: 0.04em;
     white-space: nowrap;
   }
-
   .proxy-btn:hover {
     background: rgba(200,240,160,0.07);
     border-color: rgba(200,240,160,0.14);
@@ -276,7 +532,6 @@
     box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 40px rgba(0,0,0,0.5);
     position: relative;
   }
-
   .proxy-frame-wrap.open { height: 420px; }
 
   .proxy-frame-toolbar {
@@ -302,7 +557,6 @@
     outline: none;
     cursor: none;
   }
-
   .proxy-frame-url::placeholder { color: #2a2a2a; }
 
   .proxy-mini-btn {
@@ -317,7 +571,6 @@
     transition: all 0.15s;
     white-space: nowrap;
   }
-
   .proxy-mini-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.1); }
 
   #proxyFrameContainer {
@@ -327,7 +580,6 @@
     right: 0;
     bottom: 0;
   }
-
   #proxyFrameContainer iframe {
     width: 100%;
     height: 100%;
@@ -359,7 +611,6 @@
     backdrop-filter: blur(16px);
     transition: border-color 0.2s;
   }
-
   .games-search-input::placeholder { color: #3a3a3a; }
   .games-search-input:focus { border-color: rgba(200,240,160,0.2); }
 
@@ -406,23 +657,19 @@
     cursor: none;
     transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
   }
-
   .game-card:hover {
     border-color: rgba(200,240,160,0.18);
     transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(0,0,0,0.4);
   }
-
   .game-card.special-card {
     border-color: rgba(88,101,242,0.2);
     background: rgba(88,101,242,0.06);
   }
-
   .game-card.special-card:hover {
     border-color: rgba(88,101,242,0.4);
     box-shadow: 0 8px 24px rgba(88,101,242,0.15);
   }
-
   .game-card img {
     width: 100%;
     aspect-ratio: 1;
@@ -430,7 +677,6 @@
     display: block;
     background: var(--surface2);
   }
-
   .special-card-icon {
     width: 100%;
     aspect-ratio: 1;
@@ -440,7 +686,6 @@
     font-size: 32px;
     background: rgba(88,101,242,0.08);
   }
-
   .game-card-name {
     padding: 8px 8px 9px;
     font-size: 11px;
@@ -449,7 +694,6 @@
     line-height: 1.3;
     letter-spacing: 0.02em;
   }
-
   .game-card:hover .game-card-name { color: var(--text); }
   .special-card .game-card-name { color: #7289da; }
   .special-card:hover .game-card-name { color: #99aab5; }
@@ -471,7 +715,6 @@
     display: none;
     flex-direction: column;
   }
-
   .game-viewer.open { display: flex; }
 
   .game-viewer-bar {
@@ -484,10 +727,8 @@
     backdrop-filter: blur(16px);
     flex-shrink: 0;
   }
-
   .game-viewer-title { flex: 1; font-size: 13px; color: var(--text); letter-spacing: 0.04em; }
   .game-viewer-author { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
-
   .game-viewer-btn {
     padding: 7px 14px;
     background: rgba(24,24,28,0.9);
@@ -502,10 +743,8 @@
     letter-spacing: 0.04em;
     white-space: nowrap;
   }
-
   .game-viewer-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.12); }
   .game-viewer-btn.close-btn:hover { color: #f87171; border-color: rgba(248,113,113,0.2); }
-
   .game-viewer iframe { flex: 1; border: none; width: 100%; cursor: auto; }
 
   .status-row {
@@ -530,7 +769,6 @@
     box-shadow: 0 0 6px rgba(200,240,160,0.5);
     animation: pulse 2.5s ease infinite;
   }
-
   @keyframes pulse {
     0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(200,240,160,0.5); }
     50% { opacity: 0.4; box-shadow: 0 0 3px rgba(200,240,160,0.15); }
@@ -538,58 +776,17 @@
 
   .error-msg { margin-top: 8px; color: #f87171; font-size: 11px; text-align: center; display: none; }
 
-  .cloak-panel { width: min(480px, 92vw); }
-
-  .cloak-label {
-    font-size: 10px;
-    color: #333;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-    padding-left: 2px;
+  /* panic flash */
+  .panic-flash {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: #fff;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.1s;
   }
-
-  .cloak-presets {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
-    margin-bottom: 4px;
-  }
-
-  .cloak-preset {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    padding: 10px 6px;
-    background: rgba(13,13,15,0.85);
-    border: 1px solid var(--border);
-    border-top-color: rgba(255,255,255,0.07);
-    border-radius: 8px;
-    color: var(--muted);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    cursor: none;
-    transition: all 0.15s;
-    letter-spacing: 0.03em;
-    backdrop-filter: blur(16px);
-  }
-
-  .cloak-preset img {
-    width: 20px;
-    height: 20px;
-    object-fit: contain;
-    border-radius: 3px;
-  }
-
-  .cloak-preset:hover { color: #aaa; border-color: rgba(255,255,255,0.1); }
-
-  .cloak-preset.active {
-    background: rgba(200,240,160,0.07);
-    border-color: rgba(200,240,160,0.2);
-    border-top-color: rgba(200,240,160,0.3);
-    color: var(--accent);
-  }
+  .panic-flash.go { opacity: 1; }
 </style>
 </head>
 <body>
@@ -598,6 +795,118 @@
 <div class="vignette"></div>
 <div class="cursor-glow" id="cursorGlow"></div>
 <div class="cursor-dot" id="cursorDot"></div>
+<div class="panic-flash" id="panicFlash"></div>
+
+<!-- SETTINGS MODAL -->
+<div class="settings-overlay" id="settingsOverlay"></div>
+<div class="settings-modal" id="settingsModal">
+  <div class="settings-header">
+    <span class="settings-title">settings</span>
+    <button class="settings-close" id="settingsClose">×</button>
+  </div>
+  <div class="settings-body">
+
+    <!-- BACKGROUND -->
+    <div>
+      <div class="settings-section-title">background</div>
+      <div class="bg-options" id="bgOptions">
+        <div class="bg-option active" data-bg="particles" id="prev-particles">
+          <canvas id="prev-canvas-particles"></canvas>
+          <div class="bg-option-label">particles</div>
+        </div>
+        <div class="bg-option" data-bg="rain" id="prev-rain">
+          <canvas id="prev-canvas-rain"></canvas>
+          <div class="bg-option-label">rain</div>
+        </div>
+        <div class="bg-option" data-bg="matrix" id="prev-matrix">
+          <canvas id="prev-canvas-matrix"></canvas>
+          <div class="bg-option-label">matrix</div>
+        </div>
+        <div class="bg-option" data-bg="starfield" id="prev-starfield">
+          <canvas id="prev-canvas-starfield"></canvas>
+          <div class="bg-option-label">starfield</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANIC KEY -->
+    <div>
+      <div class="settings-section-title">panic key</div>
+      <div style="margin-bottom:10px;">
+        <div class="panic-row">
+          <div class="panic-key-display" id="panicKeyDisplay">?</div>
+          <button class="panic-set-btn" id="panicSetBtn">press to set key</button>
+          <span class="panic-hint">instantly navigates away<br>and clears history</span>
+        </div>
+      </div>
+      <div class="cloak-label" style="margin-top:12px;">escape url</div>
+      <div class="proxy-bar">
+        <span class="proxy-icon" style="font-size:13px;">⌕</span>
+        <input class="proxy-input" id="panicUrl" type="text" placeholder="https://clever.com" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+
+    <!-- CLOAK -->
+    <div>
+      <div class="settings-section-title">tab cloak</div>
+      <div class="cloak-label">tab name</div>
+      <div class="proxy-bar" style="margin-bottom:10px;">
+        <span class="proxy-icon" style="font-size:13px;">✎</span>
+        <input class="proxy-input" id="cloakTitle" type="text" placeholder="e.g. Google Classroom" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="cloak-label">favicon preset</div>
+      <div class="cloak-presets" id="cloakPresets">
+        <button class="cloak-preset" data-title="Google Classroom" data-icon="https://ssl.gstatic.com/classroom/favicon.png">
+          <img src="https://ssl.gstatic.com/classroom/favicon.png" alt=""> classroom
+        </button>
+        <button class="cloak-preset" data-title="Google Docs" data-icon="https://ssl.gstatic.com/docs/documents/images/kix-favicon7.ico">
+          <img src="https://ssl.gstatic.com/docs/documents/images/kix-favicon7.ico" alt=""> docs
+        </button>
+        <button class="cloak-preset" data-title="Google Drive" data-icon="https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_32dp.png">
+          <img src="https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_32dp.png" alt=""> drive
+        </button>
+        <button class="cloak-preset" data-title="Khan Academy" data-icon="/favicons/khan.ico">
+          <img src="/favicons/khan.ico" alt=""> khan academy
+        </button>
+        <button class="cloak-preset" data-title="Quizlet" data-icon="/favicons/quizlet.ico">
+          <img src="/favicons/quizlet.ico" alt=""> quizlet
+        </button>
+        <button class="cloak-preset" data-title="Duolingo" data-icon="/favicons/duolingo.ico">
+          <img src="/favicons/duolingo.ico" alt=""> duolingo
+        </button>
+        <button class="cloak-preset" data-title="Desmos" data-icon="/favicons/desmos.ico">
+          <img src="/favicons/desmos.ico" alt=""> desmos
+        </button>
+        <button class="cloak-preset" data-title="Clever | Portal" data-icon="/favicons/clever.ico">
+          <img src="/favicons/clever.ico" alt=""> clever
+        </button>
+        <button class="cloak-preset" data-title="Choose a subject, i-Ready" data-icon="/favicons/iready.ico">
+          <img src="/favicons/iready.ico" alt=""> i-ready
+        </button>
+        <button class="cloak-preset" data-title="NoodleTools - Projects" data-icon="/favicons/noodletools.ico">
+          <img src="/favicons/noodletools.ico" alt=""> noodletools
+        </button>
+        <button class="cloak-preset" data-title="Schoology" data-icon="/favicons/schoology.ico">
+          <img src="/favicons/schoology.ico" alt=""> schoology
+        </button>
+        <button class="cloak-preset active" data-title="void" data-icon="/void-icon.svg">
+          <img src="/void-icon.svg" alt=""> void
+        </button>
+      </div>
+      <div class="cloak-label" style="margin-top:10px;">custom icon url</div>
+      <div class="proxy-bar" style="margin-bottom:12px;">
+        <span class="proxy-icon" style="font-size:13px;">🔗</span>
+        <input class="proxy-input" id="cloakIcon" type="text" placeholder="https://example.com/favicon.ico" autocomplete="off" spellcheck="false">
+      </div>
+      <button class="proxy-btn" id="applyCloak" style="width:100%;margin:0;padding:12px;">apply cloak</button>
+      <button class="proxy-btn" id="resetCloak" style="width:100%;margin:4px 0 0;padding:10px;color:#555;">reset to void</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- GEAR BUTTON -->
+<button class="gear-btn" id="gearBtn">⚙</button>
 
 <div class="game-viewer" id="gameViewer">
   <div class="game-viewer-bar">
@@ -619,7 +928,6 @@
   <div class="tabs">
     <button class="tab active" data-tab="proxy">proxy</button>
     <button class="tab" data-tab="games">games</button>
-    <button class="tab" data-tab="cloak">cloak</button>
   </div>
 
   <div class="panel proxy-panel active" id="tab-proxy">
@@ -661,60 +969,6 @@
     </div>
   </div>
 
-  <div class="panel cloak-panel" id="tab-cloak">
-    <div class="cloak-label">tab name</div>
-    <div class="proxy-bar" style="margin-bottom:10px;">
-      <span class="proxy-icon" style="font-size:13px;">✎</span>
-      <input class="proxy-input" id="cloakTitle" type="text" placeholder="e.g. Google Classroom" autocomplete="off" spellcheck="false">
-    </div>
-    <div class="cloak-label">favicon preset</div>
-    <div class="cloak-presets" id="cloakPresets">
-      <button class="cloak-preset" data-title="Google Classroom" data-icon="https://ssl.gstatic.com/classroom/favicon.png">
-        <img src="https://ssl.gstatic.com/classroom/favicon.png" alt=""> classroom
-      </button>
-      <button class="cloak-preset" data-title="Google Docs" data-icon="https://ssl.gstatic.com/docs/documents/images/kix-favicon7.ico">
-        <img src="https://ssl.gstatic.com/docs/documents/images/kix-favicon7.ico" alt=""> docs
-      </button>
-      <button class="cloak-preset" data-title="Google Drive" data-icon="https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_32dp.png">
-        <img src="https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_32dp.png" alt=""> drive
-      </button>
-      <button class="cloak-preset" data-title="Khan Academy" data-icon="/favicons/khan.ico">
-        <img src="/favicons/khan.ico" alt=""> khan academy
-      </button>
-      <button class="cloak-preset" data-title="Quizlet" data-icon="/favicons/quizlet.ico">
-        <img src="/favicons/quizlet.ico" alt=""> quizlet
-      </button>
-      <button class="cloak-preset" data-title="Duolingo" data-icon="/favicons/duolingo.ico">
-        <img src="/favicons/duolingo.ico" alt=""> duolingo
-      </button>
-      <button class="cloak-preset" data-title="Desmos" data-icon="/favicons/desmos.ico">
-        <img src="/favicons/desmos.ico" alt=""> desmos
-      </button>
-      <button class="cloak-preset" data-title="Clever | Portal" data-icon="/favicons/clever.ico">
-        <img src="/favicons/clever.ico" alt=""> clever
-      </button>
-      <button class="cloak-preset" data-title="Choose a subject, i-Ready" data-icon="/favicons/iready.ico">
-        <img src="/favicons/iready.ico" alt=""> i-ready
-      </button>
-      <button class="cloak-preset" data-title="NoodleTools - Projects" data-icon="/favicons/noodletools.ico">
-        <img src="/favicons/noodletools.ico" alt=""> noodletools
-      </button>
-      <button class="cloak-preset" data-title="Schoology" data-icon="/favicons/schoology.ico">
-        <img src="/favicons/schoology.ico" alt=""> schoology
-      </button>
-      <button class="cloak-preset active" data-title="void" data-icon="/void-icon.svg">
-        <img src="/void-icon.svg" alt=""> void
-      </button>
-    </div>
-    <div class="cloak-label" style="margin-top:14px;">custom icon url</div>
-    <div class="proxy-bar" style="margin-bottom:12px;">
-      <span class="proxy-icon" style="font-size:13px;">🔗</span>
-      <input class="proxy-input" id="cloakIcon" type="text" placeholder="https://example.com/favicon.ico" autocomplete="off" spellcheck="false">
-    </div>
-    <button class="proxy-btn" id="applyCloak" style="width:100%;margin:0;padding:12px;">apply cloak</button>
-    <button class="proxy-btn" id="resetCloak" style="width:100%;margin:4px 0 0;padding:10px;color:#555;">reset to void</button>
-  </div>
-
   <div class="status-row">
     <span><span class="dot"></span>online</span>
   </div>
@@ -737,54 +991,53 @@ scramjet.init('/sw.js');
 
 const connection = new BareMuxConnection('/baremux/worker.js');
 
+// ─── BACKGROUND SYSTEM ───────────────────────────────────────────────
 const canvas = document.getElementById('bg');
 const ctx = canvas.getContext('2d');
-const glowEl = document.getElementById('cursorGlow');
-const dotEl = document.getElementById('cursorDot');
 
-let W, H, particles, tick = 0;
-let mouse = { x: -9999, y: -9999 };
-let glowPos = { x: -9999, y: -9999 };
-
-const TRAIL_LENGTH = 22;
-const trail = Array.from({ length: TRAIL_LENGTH }, () => ({ x: -9999, y: -9999 }));
-let trailIndex = 0;
+let currentBg = localStorage.getItem('voidBg') || 'particles';
+let bgAnimId = null;
+let W, H;
 
 function resize() {
   W = canvas.width = window.innerWidth;
   H = canvas.height = window.innerHeight;
 }
+window.addEventListener('resize', () => { resize(); startBg(currentBg); });
+resize();
+
+// shared mouse
+let mouse = { x: -9999, y: -9999 };
+window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+window.addEventListener('mouseleave', () => { mouse.x = -9999; mouse.y = -9999; });
+
+// ── PARTICLES ──
+let particles = [], tick = 0;
+const TRAIL_LENGTH = 22;
+const trail = Array.from({ length: TRAIL_LENGTH }, () => ({ x: -9999, y: -9999 }));
+let trailIndex = 0;
 
 function initParticles() {
+  tick = 0;
+  trailIndex = 0;
+  trail.forEach(t => { t.x = -9999; t.y = -9999; });
   const count = Math.floor((W * H) / 7000);
   particles = Array.from({ length: count }, () => ({
-    x: Math.random() * W,
-    y: Math.random() * H,
-    vx: (Math.random() - 0.5) * 0.15,
-    vy: (Math.random() - 0.5) * 0.15,
+    x: Math.random() * W, y: Math.random() * H,
+    vx: (Math.random() - 0.5) * 0.15, vy: (Math.random() - 0.5) * 0.15,
     r: Math.random() * 1.4 + 0.4,
-    ox: Math.random() * 1000,
-    oy: Math.random() * 1000,
+    ox: Math.random() * 1000, oy: Math.random() * 1000,
     freq: Math.random() * 0.0004 + 0.0002,
     amp: Math.random() * 0.25 + 0.1,
     bright: Math.random(),
   }));
 }
 
-function draw() {
+function drawParticles() {
   tick++;
-  glowPos.x += (mouse.x - glowPos.x) * 0.18;
-  glowPos.y += (mouse.y - glowPos.y) * 0.18;
-  glowEl.style.left = glowPos.x + 'px';
-  glowEl.style.top = glowPos.y + 'px';
-  dotEl.style.left = mouse.x + 'px';
-  dotEl.style.top = mouse.y + 'px';
-
+  ctx.clearRect(0, 0, W, H);
   trail[trailIndex] = { x: mouse.x, y: mouse.y };
   trailIndex = (trailIndex + 1) % TRAIL_LENGTH;
-
-  ctx.clearRect(0, 0, W, H);
-
   for (let i = 0; i < TRAIL_LENGTH; i++) {
     const idx = (trailIndex - 1 - i + TRAIL_LENGTH) % TRAIL_LENGTH;
     const pt = trail[idx];
@@ -795,35 +1048,24 @@ function draw() {
     ctx.fillStyle = `rgba(220,230,255,${progress * 0.35})`;
     ctx.fill();
   }
-
   for (let p of particles) {
-    const dx = p.x - mouse.x;
-    const dy = p.y - mouse.y;
+    const dx = p.x - mouse.x, dy = p.y - mouse.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const repel = 110;
-
-    if (dist < repel) {
+    if (dist < repel && dist > 0) {
       const force = (repel - dist) / repel;
       p.vx += (dx / dist) * force * 0.6;
       p.vy += (dy / dist) * force * 0.6;
     }
-
     p.vx += Math.sin(tick * p.freq + p.ox) * p.amp * 0.012;
     p.vy += Math.cos(tick * p.freq + p.oy) * p.amp * 0.012;
-    p.vx *= 0.97;
-    p.vy *= 0.97;
-    p.x += p.vx;
-    p.y += p.vy;
-
-    if (p.x < 0) p.x = W;
-    if (p.x > W) p.x = 0;
-    if (p.y < 0) p.y = H;
-    if (p.y > H) p.y = 0;
-
+    p.vx *= 0.97; p.vy *= 0.97;
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+    if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
     const proximity = Math.max(0, 1 - dist / 160);
     const alpha = 0.18 + p.bright * 0.18 + proximity * 0.45;
     const radius = p.r + proximity * 1.0;
-
     ctx.shadowBlur = proximity > 0.05 ? 6 + proximity * 10 : 0;
     ctx.shadowColor = `rgba(200,240,160,${proximity * 0.7})`;
     ctx.beginPath();
@@ -831,9 +1073,7 @@ function draw() {
     ctx.fillStyle = `rgba(200,240,160,${alpha})`;
     ctx.fill();
   }
-
   ctx.shadowBlur = 0;
-
   const maxDist = 120;
   for (let i = 0; i < particles.length; i++) {
     for (let j = i + 1; j < particles.length; j++) {
@@ -850,24 +1090,264 @@ function draw() {
       }
     }
   }
-
-  requestAnimationFrame(draw);
+  bgAnimId = requestAnimationFrame(drawParticles);
 }
 
-window.addEventListener('resize', () => { resize(); initParticles(); });
-window.addEventListener('mousemove', e => {
-  mouse.x = e.clientX; mouse.y = e.clientY;
-  glowEl.style.opacity = '1';
-  dotEl.style.opacity = '1';
-});
-window.addEventListener('mouseleave', () => {
-  mouse.x = -9999; mouse.y = -9999;
-  glowEl.style.opacity = '0';
-  dotEl.style.opacity = '0';
+// ── RAIN ──
+let rainDrops = [];
+function initRain() {
+  const cols = Math.floor(W / 18);
+  rainDrops = Array.from({ length: cols }, (_, i) => ({
+    x: i * 18 + 9,
+    y: Math.random() * -H,
+    speed: Math.random() * 2 + 1,
+    length: Math.floor(Math.random() * 18 + 8),
+    opacity: Math.random() * 0.4 + 0.1,
+    width: Math.random() * 1 + 0.5,
+  }));
+}
+function drawRain() {
+  ctx.clearRect(0, 0, W, H);
+  for (let d of rainDrops) {
+    const grad = ctx.createLinearGradient(d.x, d.y - d.length * 12, d.x, d.y);
+    grad.addColorStop(0, `rgba(180,200,255,0)`);
+    grad.addColorStop(0.6, `rgba(180,200,255,${d.opacity * 0.5})`);
+    grad.addColorStop(1, `rgba(220,230,255,${d.opacity})`);
+    ctx.beginPath();
+    ctx.moveTo(d.x, d.y - d.length * 12);
+    ctx.lineTo(d.x, d.y);
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = d.width;
+    ctx.stroke();
+    // splash at bottom
+    if (d.y > H - 20) {
+      ctx.beginPath();
+      ctx.arc(d.x, H - 2, 2, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(180,200,255,${d.opacity * 0.3})`;
+      ctx.fill();
+    }
+    d.y += d.speed * 6;
+    if (d.y > H + d.length * 12) {
+      d.y = Math.random() * -200;
+      d.speed = Math.random() * 2 + 1;
+      d.opacity = Math.random() * 0.4 + 0.1;
+    }
+  }
+  bgAnimId = requestAnimationFrame(drawRain);
+}
+
+// ── MATRIX ──
+let matrixCols = [], matrixTick = 0;
+const MATRIX_CHARS = 'ｦｧｨｩｪｫｬｭｮｯｰｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ01';
+function initMatrix() {
+  const fontSize = 14;
+  const cols = Math.floor(W / fontSize);
+  matrixCols = Array.from({ length: cols }, () => ({
+    y: Math.random() * -50,
+    speed: Math.random() * 0.5 + 0.2,
+    chars: Array.from({ length: Math.floor(Math.random() * 20 + 8) }, () =>
+      MATRIX_CHARS[Math.floor(Math.random() * MATRIX_CHARS.length)]
+    ),
+    opacity: Math.random() * 0.3 + 0.05,
+    updateTimer: 0,
+    updateInterval: Math.floor(Math.random() * 8 + 4),
+  }));
+}
+function drawMatrix() {
+  matrixTick++;
+  ctx.fillStyle = 'rgba(9,9,11,0.08)';
+  ctx.fillRect(0, 0, W, H);
+  const fontSize = 14;
+  ctx.font = `${fontSize}px 'DM Mono', monospace`;
+  for (let i = 0; i < matrixCols.length; i++) {
+    const col = matrixCols[i];
+    col.updateTimer++;
+    if (col.updateTimer >= col.updateInterval) {
+      col.updateTimer = 0;
+      const idx = Math.floor(Math.random() * col.chars.length);
+      col.chars[idx] = MATRIX_CHARS[Math.floor(Math.random() * MATRIX_CHARS.length)];
+    }
+    const x = i * fontSize;
+    for (let j = 0; j < col.chars.length; j++) {
+      const y = (col.y - j) * fontSize;
+      if (y < 0 || y > H) continue;
+      const fade = 1 - j / col.chars.length;
+      if (j === 0) {
+        ctx.fillStyle = `rgba(220,255,200,${col.opacity * 2.5})`;
+      } else {
+        ctx.fillStyle = `rgba(150,220,120,${col.opacity * fade * 0.8})`;
+      }
+      ctx.fillText(col.chars[j], x, y);
+    }
+    col.y += col.speed;
+    if ((col.y - col.chars.length) * fontSize > H) {
+      col.y = Math.random() * -20;
+      col.speed = Math.random() * 0.5 + 0.2;
+      col.opacity = Math.random() * 0.3 + 0.05;
+    }
+  }
+  bgAnimId = requestAnimationFrame(drawMatrix);
+}
+
+// ── STARFIELD ──
+let stars = [], starMouse = { x: W / 2, y: H / 2 };
+function initStarfield() {
+  stars = Array.from({ length: 220 }, () => ({
+    x: Math.random() * W, y: Math.random() * H,
+    z: Math.random() * W,
+    pz: 0,
+    size: Math.random() * 1.5 + 0.3,
+    bright: Math.random(),
+    twinkle: Math.random() * Math.PI * 2,
+    twinkleSpeed: Math.random() * 0.03 + 0.01,
+  }));
+}
+function drawStarfield() {
+  ctx.clearRect(0, 0, W, H);
+  // subtle nebula
+  const cx = W / 2 + (mouse.x - W / 2) * 0.02;
+  const cy = H / 2 + (mouse.y - H / 2) * 0.02;
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, W * 0.5);
+  grad.addColorStop(0, 'rgba(30,20,50,0.15)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  const offsetX = (mouse.x - W / 2) * 0.015;
+  const offsetY = (mouse.y - H / 2) * 0.015;
+
+  for (let s of stars) {
+    s.twinkle += s.twinkleSpeed;
+    const twinkleAlpha = 0.5 + Math.sin(s.twinkle) * 0.5;
+    const px = s.x + offsetX * (s.z / W);
+    const py = s.y + offsetY * (s.z / W);
+    const alpha = (0.3 + s.bright * 0.5) * twinkleAlpha;
+    const r = s.size * (0.5 + s.bright * 0.8);
+    // glow for brighter stars
+    if (s.bright > 0.7) {
+      ctx.shadowBlur = 6;
+      ctx.shadowColor = `rgba(200,210,255,${alpha * 0.5})`;
+    }
+    ctx.beginPath();
+    ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${200 + s.bright * 55},${200 + s.bright * 30},${220 + s.bright * 35},${alpha})`;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+  // shooting star occasionally
+  bgAnimId = requestAnimationFrame(drawStarfield);
+}
+
+function startBg(name) {
+  if (bgAnimId) cancelAnimationFrame(bgAnimId);
+  ctx.clearRect(0, 0, W, H);
+  bgAnimId = null;
+  currentBg = name;
+  localStorage.setItem('voidBg', name);
+  // update picker active state
+  document.querySelectorAll('.bg-option').forEach(o => o.classList.toggle('active', o.dataset.bg === name));
+  if (name === 'particles') { initParticles(); drawParticles(); }
+  else if (name === 'rain') { initRain(); drawRain(); }
+  else if (name === 'matrix') { initMatrix(); drawMatrix(); }
+  else if (name === 'starfield') { initStarfield(); drawStarfield(); }
+}
+
+// start saved bg
+startBg(currentBg);
+
+// ─── PREVIEW THUMBNAILS ──────────────────────────────────────────────
+function drawPreview(canvasEl, type) {
+  const w = canvasEl.width = canvasEl.offsetWidth || 120;
+  const h = canvasEl.height = canvasEl.offsetHeight || 75;
+  const c = canvasEl.getContext('2d');
+  c.clearRect(0, 0, w, h);
+
+  if (type === 'particles') {
+    const pts = Array.from({ length: 18 }, () => ({ x: Math.random() * w, y: Math.random() * h }));
+    pts.forEach(p => {
+      c.beginPath(); c.arc(p.x, p.y, Math.random() * 1.2 + 0.4, 0, Math.PI * 2);
+      c.fillStyle = `rgba(200,240,160,${Math.random() * 0.4 + 0.15})`; c.fill();
+    });
+    for (let i = 0; i < pts.length; i++) for (let j = i+1; j < pts.length; j++) {
+      const d = Math.hypot(pts[i].x-pts[j].x, pts[i].y-pts[j].y);
+      if (d < 35) { c.beginPath(); c.moveTo(pts[i].x, pts[i].y); c.lineTo(pts[j].x, pts[j].y);
+        c.strokeStyle = `rgba(200,240,160,${(1-d/35)*0.15})`; c.lineWidth = 0.5; c.stroke(); }
+    }
+  } else if (type === 'rain') {
+    for (let i = 0; i < 12; i++) {
+      const x = Math.random() * w, len = Math.random() * 20 + 10;
+      const y = Math.random() * h;
+      const g = c.createLinearGradient(x, y-len, x, y);
+      g.addColorStop(0, 'rgba(180,200,255,0)'); g.addColorStop(1, `rgba(200,220,255,${Math.random()*0.4+0.1})`);
+      c.beginPath(); c.moveTo(x, y-len); c.lineTo(x, y);
+      c.strokeStyle = g; c.lineWidth = 0.8; c.stroke();
+    }
+  } else if (type === 'matrix') {
+    c.font = '8px monospace';
+    for (let i = 0; i < 10; i++) {
+      const x = Math.random() * w, y = Math.random() * h;
+      c.fillStyle = `rgba(150,220,120,${Math.random()*0.3+0.1})`;
+      c.fillText(MATRIX_CHARS[Math.floor(Math.random()*MATRIX_CHARS.length)], x, y);
+    }
+  } else if (type === 'starfield') {
+    for (let i = 0; i < 30; i++) {
+      c.beginPath(); c.arc(Math.random()*w, Math.random()*h, Math.random()*1.2+0.2, 0, Math.PI*2);
+      c.fillStyle = `rgba(210,210,240,${Math.random()*0.6+0.2})`; c.fill();
+    }
+  }
+}
+
+// draw previews after a tick so layout is done
+setTimeout(() => {
+  ['particles','rain','matrix','starfield'].forEach(type => {
+    const c = document.getElementById('prev-canvas-' + type);
+    if (c) drawPreview(c, type);
+  });
+}, 100);
+
+document.querySelectorAll('.bg-option').forEach(opt => {
+  opt.addEventListener('click', () => startBg(opt.dataset.bg));
 });
 
-resize(); initParticles(); draw();
+// ─── CURSOR ──────────────────────────────────────────────────────────
+const glowEl = document.getElementById('cursorGlow');
+const dotEl = document.getElementById('cursorDot');
+let glowPos = { x: -9999, y: -9999 };
 
+function animCursor() {
+  glowPos.x += (mouse.x - glowPos.x) * 0.18;
+  glowPos.y += (mouse.y - glowPos.y) * 0.18;
+  glowEl.style.left = glowPos.x + 'px';
+  glowEl.style.top = glowPos.y + 'px';
+  dotEl.style.left = mouse.x + 'px';
+  dotEl.style.top = mouse.y + 'px';
+  requestAnimationFrame(animCursor);
+}
+animCursor();
+
+window.addEventListener('mousemove', () => { glowEl.style.opacity = '1'; dotEl.style.opacity = '1'; });
+window.addEventListener('mouseleave', () => { glowEl.style.opacity = '0'; dotEl.style.opacity = '0'; });
+
+// ─── SETTINGS MODAL ──────────────────────────────────────────────────
+const gearBtn = document.getElementById('gearBtn');
+const settingsModal = document.getElementById('settingsModal');
+const settingsOverlay = document.getElementById('settingsOverlay');
+const settingsClose = document.getElementById('settingsClose');
+
+function openSettings() {
+  settingsModal.classList.add('open');
+  settingsOverlay.classList.add('open');
+}
+function closeSettings() {
+  settingsModal.classList.remove('open');
+  settingsOverlay.classList.remove('open');
+}
+
+gearBtn.addEventListener('click', openSettings);
+settingsClose.addEventListener('click', closeSettings);
+settingsOverlay.addEventListener('click', closeSettings);
+
+// ─── TABS ─────────────────────────────────────────────────────────────
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     const current = document.querySelector('.panel.active');
@@ -894,25 +1374,22 @@ document.querySelectorAll('.engine-btn').forEach(btn => {
   });
 });
 
+// ─── PROXY ───────────────────────────────────────────────────────────
 let sjFrame = null;
 
 async function navigate() {
   let val = document.getElementById('proxyUrl').value.trim();
   if (!val) return;
-
   const errMsg = document.getElementById('errMsg');
   errMsg.style.display = 'none';
-
   if (!val.startsWith('http://') && !val.startsWith('https://')) {
     val = val.includes('.') && !val.includes(' ')
       ? 'https://' + val
       : 'https://www.google.com/search?q=' + encodeURIComponent(val);
   }
-
   const goBtn = document.getElementById('goBtn');
   goBtn.textContent = 'loading...';
   goBtn.disabled = true;
-
   try {
     await registerSW();
   } catch (err) {
@@ -922,19 +1399,16 @@ async function navigate() {
     goBtn.disabled = false;
     return;
   }
-
   try {
     const wispUrl = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/wisp/';
     if ((await connection.getTransport()) !== '/libcurl/index.mjs') {
       await connection.setTransport('/libcurl/index.mjs', [{ websocket: wispUrl }]);
     }
-
     const frameWrap = document.getElementById('frameWrap');
     const container = document.getElementById('proxyFrameContainer');
     document.getElementById('frameUrlBar').value = val;
     frameWrap.classList.add('open');
     container.innerHTML = '';
-
     sjFrame = scramjet.createFrame();
     sjFrame.frame.style.cssText = 'width:100%;height:100%;border:none;cursor:auto;';
     container.appendChild(sjFrame.frame);
@@ -943,36 +1417,28 @@ async function navigate() {
     errMsg.textContent = "couldn't load that page — try a different url";
     errMsg.style.display = 'block';
   }
-
   goBtn.textContent = 'go →';
   goBtn.disabled = false;
 }
 
 document.getElementById('goBtn').addEventListener('click', navigate);
-document.getElementById('proxyUrl').addEventListener('keydown', e => {
-  if (e.key === 'Enter') navigate();
-});
-
+document.getElementById('proxyUrl').addEventListener('keydown', e => { if (e.key === 'Enter') navigate(); });
 document.getElementById('frameClose').addEventListener('click', () => {
   document.getElementById('frameWrap').classList.remove('open');
   document.getElementById('proxyFrameContainer').innerHTML = '';
   document.getElementById('frameUrlBar').value = '';
   sjFrame = null;
 });
-
 document.getElementById('frameNewTab').addEventListener('click', () => {
   if (sjFrame && sjFrame.frame.src) window.open(sjFrame.frame.src, '_blank');
 });
 
+// ─── CLOAK ───────────────────────────────────────────────────────────
 let currentCloakIcon = '/void-icon.svg';
 
 function setFavicon(url) {
   let link = document.querySelector("link[rel~='icon']");
-  if (!link) {
-    link = document.createElement('link');
-    link.rel = 'icon';
-    document.head.appendChild(link);
-  }
+  if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
   link.href = url;
 }
 
@@ -1002,16 +1468,8 @@ document.getElementById('applyCloak').addEventListener('click', () => {
   const title = document.getElementById('cloakTitle').value.trim();
   const iconInput = document.getElementById('cloakIcon').value.trim();
   const icon = iconInput || currentCloakIcon;
-
-  if (title) {
-    document.title = title;
-    localStorage.setItem('voidCloakTitle', title);
-  }
-  if (icon) {
-    setFavicon(icon);
-    localStorage.setItem('voidCloakIcon', icon);
-  }
-
+  if (title) { document.title = title; localStorage.setItem('voidCloakTitle', title); }
+  if (icon) { setFavicon(icon); localStorage.setItem('voidCloakIcon', icon); }
   const btn = document.getElementById('applyCloak');
   btn.textContent = 'applied ✓';
   setTimeout(() => btn.textContent = 'apply cloak', 1500);
@@ -1029,16 +1487,61 @@ document.getElementById('resetCloak').addEventListener('click', () => {
   currentCloakIcon = '/void-icon.svg';
 });
 
+// ─── PANIC KEY ───────────────────────────────────────────────────────
+let panicKey = localStorage.getItem('voidPanicKey') || '';
+let panicUrl = localStorage.getItem('voidPanicUrl') || 'https://clever.com';
+let listeningForKey = false;
+
+const panicKeyDisplay = document.getElementById('panicKeyDisplay');
+const panicSetBtn = document.getElementById('panicSetBtn');
+const panicUrlInput = document.getElementById('panicUrl');
+
+panicKeyDisplay.textContent = panicKey || '?';
+panicUrlInput.value = panicUrl;
+
+panicSetBtn.addEventListener('click', () => {
+  listeningForKey = !listeningForKey;
+  panicSetBtn.textContent = listeningForKey ? 'press any key...' : 'press to set key';
+  panicSetBtn.classList.toggle('listening', listeningForKey);
+  panicKeyDisplay.classList.toggle('listening', listeningForKey);
+});
+
+panicUrlInput.addEventListener('input', e => {
+  panicUrl = e.target.value.trim() || 'https://clever.com';
+  localStorage.setItem('voidPanicUrl', panicUrl);
+});
+
+window.addEventListener('keydown', e => {
+  if (listeningForKey) {
+    e.preventDefault();
+    panicKey = e.key;
+    localStorage.setItem('voidPanicKey', panicKey);
+    panicKeyDisplay.textContent = panicKey.length === 1 ? panicKey : panicKey;
+    listeningForKey = false;
+    panicSetBtn.textContent = 'press to set key';
+    panicSetBtn.classList.remove('listening');
+    panicKeyDisplay.classList.remove('listening');
+    return;
+  }
+  // fire panic
+  if (panicKey && e.key === panicKey) {
+    const flash = document.getElementById('panicFlash');
+    flash.classList.add('go');
+    setTimeout(() => {
+      const url = panicUrl.startsWith('http') ? panicUrl : 'https://' + panicUrl;
+      window.location.replace(url);
+    }, 80);
+  }
+});
+
+// ─── GAMES ───────────────────────────────────────────────────────────
 const COVER_URL = 'https://cdn.jsdelivr.net/gh/gn-math/covers@main';
 const HTML_URL = 'https://cdn.jsdelivr.net/gh/gn-math/html@main';
 const DISCORD_URL = 'https://discord.gg/gmb2RegMTd';
-
 const SPECIAL_CARDS = [
   { id: 'void-discord', name: 'suggest games\n.gg/gmb2RegMTd', icon: '💬', url: DISCORD_URL, external: true }
 ];
-
-let allZones = [];
-let popularityData = {};
+let allZones = [], popularityData = {};
 
 async function loadGames() {
   try {
@@ -1133,13 +1636,11 @@ document.getElementById('gameCloseBtn').addEventListener('click', () => {
   const frame = document.getElementById('gameFrame');
   frame.src = ''; frame.srcdoc = '';
 });
-
 document.getElementById('gameFullscreenBtn').addEventListener('click', () => {
   const frame = document.getElementById('gameFrame');
   if (frame.requestFullscreen) frame.requestFullscreen();
   else if (frame.webkitRequestFullscreen) frame.webkitRequestFullscreen();
 });
-
 document.getElementById('gameNewTabBtn').addEventListener('click', () => {
   const frame = document.getElementById('gameFrame');
   if (frame.src && frame.src !== window.location.href) {
@@ -1149,11 +1650,9 @@ document.getElementById('gameNewTabBtn').addEventListener('click', () => {
     w.document.open(); w.document.write(frame.srcdoc); w.document.close();
   }
 });
-
 document.getElementById('gamesSearch').addEventListener('input', e => {
   renderGames(allZones.filter(z => z.name.toLowerCase().includes(e.target.value.toLowerCase())));
 });
-
 document.getElementById('gamesSort').addEventListener('change', () => {
   const q = document.getElementById('gamesSearch').value.toLowerCase();
   renderGames(q ? allZones.filter(z => z.name.toLowerCase().includes(q)) : allZones);

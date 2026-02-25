@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>void</title>
+<title>oblivion</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
 <link rel="icon" type="image/svg+xml" href="/void-icon.svg">
@@ -368,11 +368,6 @@
     border-color: rgba(200,240,160,0.2);
     border-top-color: rgba(200,240,160,0.3);
     color: var(--accent);
-  }
-
-
-
-    50% { opacity: 0.5; box-shadow: 0 0 4px 1px rgba(255,255,255,0.15), 0 0 16px 4px rgba(200,220,255,0.06), 0 0 40px 12px rgba(180,200,255,0.03); }
   }
 
   .app {
@@ -968,7 +963,7 @@
         <button class="cloak-preset" data-title="Schoology" data-icon="/favicons/schoology.ico">
           <img src="/favicons/schoology.ico" alt=""> schoology
         </button>
-        <button class="cloak-preset active" data-title="void" data-icon="/void-icon.svg">
+        <button class="cloak-preset active" data-title="oblivion" data-icon="/void-icon.svg">
           <img src="/void-icon.svg" alt=""> void
         </button>
       </div>
@@ -1001,8 +996,8 @@
 </div>
 
 <div class="app" id="app">
-  <div class="wordmark">void</div>
-  <div class="tagline">your space between spaces</div>
+  <div class="wordmark">oblivion</div>
+  <div class="tagline">between here and nowhere</div>
 
   <div class="tabs">
     <button class="tab active" data-tab="proxy">proxy</button>
@@ -1108,7 +1103,7 @@ function toast(msg, type = 'info', duration = 3000) {
 const canvas = document.getElementById('bg');
 const ctx = canvas.getContext('2d');
 
-let currentBg = localStorage.getItem('voidBg') || 'rain';
+let currentBg = localStorage.getItem('oblivionBg') || 'rain';
 let bgAnimId = null;
 let W, H;
 
@@ -1533,7 +1528,7 @@ function startBg(name) {
   ctx.clearRect(0, 0, W, H);
   bgAnimId = null;
   currentBg = name;
-  localStorage.setItem('voidBg', name);
+  localStorage.setItem('oblivionBg', name);
   document.querySelectorAll('.bg-option').forEach(o => o.classList.toggle('active', o.dataset.bg === name));
   if (name === 'particles') { initParticles(); drawParticles(); }
   else if (name === 'rain') { initRain(); drawRain(); }
@@ -1781,8 +1776,8 @@ function setFavicon(url) {
   link.href = url;
 }
 
-const savedTitle = localStorage.getItem('voidCloakTitle');
-const savedIcon = localStorage.getItem('voidCloakIcon');
+const savedTitle = localStorage.getItem('oblivionCloakTitle');
+const savedIcon = localStorage.getItem('oblivionCloakIcon');
 if (savedTitle) document.title = savedTitle;
 if (savedIcon) { setFavicon(savedIcon); currentCloakIcon = savedIcon; }
 
@@ -1807,28 +1802,28 @@ document.getElementById('applyCloak').addEventListener('click', () => {
   const title = document.getElementById('cloakTitle').value.trim();
   const iconInput = document.getElementById('cloakIcon').value.trim();
   const icon = iconInput || currentCloakIcon;
-  if (title) { document.title = title; localStorage.setItem('voidCloakTitle', title); }
-  if (icon) { setFavicon(icon); localStorage.setItem('voidCloakIcon', icon); }
+  if (title) { document.title = title; localStorage.setItem('oblivionCloakTitle', title); }
+  if (icon) { setFavicon(icon); localStorage.setItem('oblivionCloakIcon', icon); }
   const btn = document.getElementById('applyCloak');
   btn.textContent = 'applied ✓';
   setTimeout(() => btn.textContent = 'apply cloak', 1500);
 });
 
 document.getElementById('resetCloak').addEventListener('click', () => {
-  document.title = 'void';
+  document.title = 'oblivion';
   setFavicon('/void-icon.svg');
-  localStorage.removeItem('voidCloakTitle');
-  localStorage.removeItem('voidCloakIcon');
+  localStorage.removeItem('oblivionCloakTitle');
+  localStorage.removeItem('oblivionCloakIcon');
   document.getElementById('cloakTitle').value = '';
   document.getElementById('cloakIcon').value = '';
   document.querySelectorAll('.cloak-preset').forEach(b => b.classList.remove('active'));
-  document.querySelector('.cloak-preset[data-title="void"]').classList.add('active');
+  document.querySelector('.cloak-preset[data-title="oblivion"]').classList.add('active');
   currentCloakIcon = '/void-icon.svg';
 });
 
 // ─── PANIC KEY ───────────────────────────────────────────────────────
-let panicKey = localStorage.getItem('voidPanicKey') || '';
-let panicUrl = localStorage.getItem('voidPanicUrl') || 'https://clever.com';
+let panicKey = localStorage.getItem('oblivionPanicKey') || '';
+let panicUrl = localStorage.getItem('oblivionPanicUrl') || 'https://clever.com';
 let listeningForKey = false;
 
 const panicKeyDisplay = document.getElementById('panicKeyDisplay');
@@ -1847,14 +1842,14 @@ panicSetBtn.addEventListener('click', () => {
 
 panicUrlInput.addEventListener('input', e => {
   panicUrl = e.target.value.trim() || 'https://clever.com';
-  localStorage.setItem('voidPanicUrl', panicUrl);
+  localStorage.setItem('oblivionPanicUrl', panicUrl);
 });
 
 window.addEventListener('keydown', e => {
   if (listeningForKey) {
     e.preventDefault();
     panicKey = e.key;
-    localStorage.setItem('voidPanicKey', panicKey);
+    localStorage.setItem('oblivionPanicKey', panicKey);
     panicKeyDisplay.textContent = panicKey.length === 1 ? panicKey : panicKey;
     listeningForKey = false;
     panicSetBtn.textContent = 'press to set key';

@@ -347,13 +347,6 @@
   }
 
 
-  canvas#grain {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    opacity: 0.032;
-  }
 
   .orb-wrap {
     display: flex;
@@ -399,19 +392,19 @@
     margin-bottom: 10px;
     opacity: 0;
     transform: translateY(12px);
-    animation: fadeUp 1.1s ease forwards 0.4s;
+    animation: fadeUp 0.7s ease forwards 0.2s;
     text-shadow: 0 0 80px rgba(255,255,255,0.07);
   }
 
   .tagline {
     font-size: 11px;
-    color: #666;
-    letter-spacing: 0.14em;
+    color: #444;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     margin-bottom: 52px;
     opacity: 0;
     transform: translateY(8px);
-    animation: fadeUp 1.1s ease forwards 0.7s;
+    animation: fadeUp 0.7s ease forwards 0.4s;
   }
 
   @keyframes fadeUp {
@@ -421,14 +414,14 @@
   .tabs {
     display: flex;
     gap: 2px;
-    background: rgba(13,13,15,0.85);
-    border: 1px solid var(--border);
-    border-top-color: var(--border-hi);
+    background: rgba(13,13,15,0.6);
+    border: 1px solid rgba(255,255,255,0.04);
+    border-top-color: rgba(255,255,255,0.07);
     border-radius: 10px;
     padding: 4px;
     margin-bottom: 20px;
     opacity: 0;
-    animation: fadeUp 1.1s ease forwards 0.95s;
+    animation: fadeUp 0.7s ease forwards 0.55s;
     backdrop-filter: blur(16px);
     box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 32px rgba(0,0,0,0.4);
   }
@@ -509,9 +502,9 @@
   .proxy-bar {
     display: flex;
     align-items: center;
-    background: rgba(13,13,15,0.85);
-    border: 1px solid var(--border);
-    border-top-color: var(--border-hi);
+    background: rgba(13,13,15,0.55);
+    border: 1px solid rgba(255,255,255,0.04);
+    border-top-color: rgba(255,255,255,0.07);
     border-radius: 10px;
     overflow: hidden;
     transition: border-color 0.2s, box-shadow 0.2s;
@@ -673,9 +666,9 @@
   }
 
   .games-grid-wrap {
-    background: rgba(13,13,15,0.7);
-    border: 1px solid var(--border);
-    border-top-color: var(--border-hi);
+    background: rgba(13,13,15,0.45);
+    border: 1px solid rgba(255,255,255,0.04);
+    border-top-color: rgba(255,255,255,0.06);
     border-radius: 12px;
     padding: 14px;
     backdrop-filter: blur(16px);
@@ -802,7 +795,7 @@
     font-size: 11px;
     letter-spacing: 0.08em;
     opacity: 0;
-    animation: fadeUp 1.1s ease forwards 1.2s;
+    animation: fadeUp 0.7s ease forwards 0.7s;
   }
 
   .dot {
@@ -895,7 +888,6 @@
 <body>
 
 <canvas id="bg"></canvas>
-<canvas id="grain"></canvas>
 <div class="vignette"></div>
 <div class="cursor-glow" id="cursorGlow"></div>
 <div class="cursor-dot" id="cursorDot"></div>
@@ -1574,27 +1566,6 @@ function startBg(name) {
 // start saved bg
 startBg(currentBg);
 
-// ── GRAIN OVERLAY ─────────────────────────────────────────────────────
-const grainCanvas = document.getElementById('grain');
-const grainCtx = grainCanvas.getContext('2d');
-let grainTick = 0;
-
-function drawGrain() {
-  grainCanvas.width = window.innerWidth;
-  grainCanvas.height = window.innerHeight;
-  const imageData = grainCtx.createImageData(grainCanvas.width, grainCanvas.height);
-  const data = imageData.data;
-  for (let i = 0; i < data.length; i += 4) {
-    const v = Math.random() * 255;
-    data[i] = v; data[i+1] = v; data[i+2] = v;
-    data[i+3] = Math.random() * 28;
-  }
-  grainCtx.putImageData(imageData, 0, 0);
-  grainTick++;
-  if (grainTick % 3 === 0) requestAnimationFrame(drawGrain);
-  else setTimeout(() => requestAnimationFrame(drawGrain), 80);
-}
-drawGrain();
 
 
 // ─── PREVIEW THUMBNAILS ──────────────────────────────────────────────

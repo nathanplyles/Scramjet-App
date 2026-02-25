@@ -622,6 +622,38 @@
   .games-search-input::placeholder { color: #3a3a3a; }
   .games-search-input:focus { border-color: rgba(200,240,160,0.2); }
 
+  .source-toggle {
+    display: flex;
+    gap: 3px;
+    background: rgba(13,13,15,0.85);
+    border: 1px solid var(--border);
+    border-top-color: var(--border-hi);
+    border-radius: 9px;
+    padding: 3px;
+    backdrop-filter: blur(16px);
+    flex-shrink: 0;
+  }
+
+  .source-btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: none;
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .source-btn:hover { color: #aaa; }
+  .source-btn.active {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
   .games-sort {
     background: rgba(13,13,15,0.85);
     border: 1px solid var(--border);
@@ -705,6 +737,18 @@
   .game-card:hover .game-card-name { color: var(--text); }
   .special-card .game-card-name { color: #7289da; }
   .special-card:hover .game-card-name { color: #99aab5; }
+
+  .seraph-no-img {
+    width: 100%;
+    aspect-ratio: 1;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 2rem;
+    color: #2a2a2e;
+    background: var(--surface2);
+  }
 
   .games-loading {
     text-align: center;
@@ -968,6 +1012,10 @@
   <div class="panel games-panel" id="tab-games">
     <div class="games-search-bar">
       <input class="games-search-input" id="gamesSearch" type="text" placeholder="search games..." autocomplete="off" spellcheck="false">
+      <div class="source-toggle">
+        <button class="source-btn active" data-source="gnmath">gn-math</button>
+        <button class="source-btn" data-source="seraph">seraph</button>
+      </div>
       <select class="games-sort" id="gamesSort">
         <option value="name">name</option>
         <option value="popular">popular</option>
@@ -1731,6 +1779,83 @@ window.addEventListener('keydown', e => {
 });
 
 // ─── GAMES ───────────────────────────────────────────────────────────
+const SERAPH_BASE = 'https://joemama980.github.io/games/';
+const SERAPH_GAMES = [
+  'slope','subwaysurfers','flappy','papaspizzaria','papasburgeria','sm64','run3','bitlife',
+  'crossy','mc','cookieclicker','templerun2','ducklife4','dinogame','jetpackjoyride',
+  'retrobowl','fruitninja','doodlejump','2048','tetris','fancypantsadventure','happywheels',
+  'papashotdoggeria','paperio2','superhot','thebindingofisaac','townscaper','tunnelrush',
+  'themehotel','escapingtheprison','stealingthediamond','infiltratingtheairship',
+  'fleeingthecomplex','theimpossiblequiz','solitaire','drifthunters','vex6','amongus',
+  'surf','motox3m','fnaf','fnaf-2','fnaf-3','fnaf-4',
+  'riddleschool/riddleschool1','riddleschool/riddleschool2','riddleschool/riddleschool3',
+  'riddleschool/riddleschool4','riddleschool/riddleschool5','riddleschool/riddletransfer',
+  'riddleschool/riddletransfer2','driftboss','fnf','pacman','papaspancakeria','rooftop',
+  'baldisbasics','bobtherobber2','minesweeper','pokemonemerald','pokemonfirered',
+  'supermariobros','supermariokart','supermarioworld','thereisnogame','worldshardestgame',
+  'castlevania','donkeykong','drmario','metroid','supermariobros2','supermariobros3',
+  'thelegendofzelda','warioware','yoshisisland','donkeykongland','kirbysdreamland',
+  'supermarioland','dogeminer','tanukisunset','aquaparkslides','colorswitch','papasfreezeria',
+  'btd/btd','btd/btd2','btd/btd3','btd/btd4','bomberman','fireemblem','iceclimber',
+  'mariokartsupercircuit','pokemonleafgreen','pokemonruby','pokemonsapphire','superstarsaga',
+  'adofai','supersmashflash','supermeatboy','stickmanhook','defendthetank','sortthecourt',
+  'thisistheonlylevel','run','run2','battleships','breakingthebank','ducklife','ducklife2',
+  'ducklife3','linerider','mariocombat','raftwars2','spaceinvaders','animalcrossingwildworld',
+  'mariokartds','newsupermariobros','nintendogs','sm64ds','gunmayhem','learntofly',
+  'rooftop2','fireboywatergirl','chibiknight','clusterrush','doodledefender','learntofly2',
+  'papasscooperia','papassushiria','papaswingeria','raftwars','unfairmario','boxingphysics2',
+  'aceattorney','metalgearsolid','mother3','pokemondiamond','pokemonplatinum','pokemonsoulsilver',
+  'advancewars','banjopilot','supermonkeyballjr','theimpossiblequiz2','papasdonuteria',
+  'fancypantsadventure2','tinyfishing','bigredbutton','achievementunlocked','kirbymassattack',
+  'sonicadvance','wormsworldparty','badicecream','badicecream2','badicecream3',
+  'adventurecapitalist','monkeymart','doom64','banjokazooie','donkeykong64','fzerox',
+  'kirby64','mariokart64','marioparty','marioparty2','ocarinaoftime','starfox64',
+  'supersmashbros','streetfighter2','getawayshootout','rabbitsamurai','mariopartyds',
+  'professorlayton','scribblenauts','advancewars2','harvestmoon','mariotennis','megamanzero',
+  'pokemonmysterydungeon','pokemonunbound','papascheeseria','papascupcakeria','papasbakeria',
+  'papaspastaria','gunmayhem2','gunmayhemredux','achievementunlocked2','achievementunlocked3',
+  'factoryballs','skywire','supermarioflash','goldensun','metroidfusion','dbzsupersonicwarriors',
+  'warioland4','ducklife5','learntofly3','bloxors','electricman2','portal','portal2',
+  'skywire2','ducklife6','boxingrandom','cellmachine','stickmanboost','vex3','vex4',
+  'skibidi1v100','goldeneye007','majorasmask','papermario','mariogolf','pokemonstadium',
+  'excitebike64','pokemonsnap','marioparty3','sonicadvance2','bowsersinsidestory',
+  'spirittracks','thesims2','tetrisds','sonicrush','thesims3','superprincesspeach',
+  'legobatman','doom2','dukenukemadvance','mariopartyadvance','mariopinballland','pacmanworld',
+  'rayman3','shrek2','simcity','simpsonsroadrage','diddykongracing','waverace64','quest64',
+  'gex64','dukenukem64','mortalkombat4','badpiggies','supermarioflash2','swordsandsandals',
+  'swordsandsandals2','wordle','vex',
+];
+
+function seraphSlugToName(slug) {
+  // get last segment for nested paths
+  const part = slug.includes('/') ? slug.split('/').pop() : slug;
+  return part.replace(/[-_]/g, ' ').replace(/\d+$/, m => ' ' + m).trim()
+    .replace(/\w/g, c => c.toUpperCase()).trim();
+}
+
+const seraphZones = SERAPH_GAMES.map(slug => ({
+  id: slug,
+  name: seraphSlugToName(slug),
+  url: SERAPH_BASE + slug + '/index.html',
+  cover: null,
+  source: 'seraph',
+}));
+
+let currentSource = 'gnmath';
+
+const SERAPH_BASE = 'https://joemama980.github.io/games';
+const SERAPH_IMG = 'https://joemama980.github.io/images/thumbnails';
+
+const seraphZones = [
+  'slope','subwaysurfers','flappy','papaspizzaria','papasburgeria','sm64','run3','bitlife','crossy','mc','cookieclicker','templerun2','ducklife4','dinogame','jetpackjoyride','retrobowl','fruitninja','doodlejump','2048','tetris','fancypantsadventure','happywheels','papashotdoggeria','paperio2','superhot','thebindingofisaac','townscaper','tunnelrush','themehotel','escapingtheprison','stealingthediamond','infiltratingtheairship','fleeingthecomplex','theimpossiblequiz','solitaire','drifthunters','vex6','amongus','surf','motox3m','fnaf','fnaf-2','fnaf-3','fnaf-4','driftboss','fnf','pacman','papaspancakeria','rooftop','baldisbasics','bobtherobber2','minesweeper','pokemonemerald','pokemonfirered','supermariobros','supermariokart','supermarioworld','thereisnogame','worldshardestgame','castlevania','donkeykong','drmario','metroid','supermariobros2','supermariobros3','thelegendofzelda','warioware','yoshisisland','donkeykongland','kirbysdreamland','supermarioland','dogeminer','tanukisunset','aquaparkslides','colorswitch','papasfreezeria','bomberman','fireemblem','iceclimber','mariokartsupercircuit','pokemonleafgreen','pokemonruby','pokemonsapphire','superstarsaga','adofai','supersmashflash','supermeatboy','stickmanhook','defendthetank','sortthecourt','thisistheonlylevel','run','run2','battleships','breakingthebank','ducklife','ducklife2','ducklife3','linerider','mariocombat','raftwars2','spaceinvaders','animalcrossingwildworld','mariokartds','newsupermariobros','nintendogs','sm64ds','gunmayhem','learntofly','rooftop2','fireboywatergirl','chibiknight','clusterrush','doodledefender','learntofly2','papasscooperia','papassushiria','papaswingeria','raftwars','unfairmario','boxingphysics2','aceattorney','metalgearsolid','mother3','pokemondiamond','pokemonplatinum','pokemonsoulsilver','advancewars','banjopilot','supermonkeyballjr','theimpossiblequiz2','papasdonuteria','fancypantsadventure2','tinyfishing','bigredbutton','achievementunlocked','kirbymassattack','sonicadvance','wormsworldparty','badicecream','badicecream2','badicecream3','adventurecapitalist','monkeymart','doom64','banjokazooie','donkeykong64','fzerox','kirby64','mariokart64','marioparty','marioparty2','ocarinaoftime','starfox64','supersmashbros','streetfighter2','getawayshootout','rabbitsamurai','mariopartyds','professorlayton','scribblenauts','advancewars2','harvestmoon','mariotennis','megamanzero','pokemonmysterydungeon','pokemonunbound','papascheeseria','papascupcakeria','papasbakeria','papaspastaria','gunmayhem2','gunmayhemredux','achievementunlocked2','achievementunlocked3','factoryballs','skywire','supermarioflash','goldensun','metroidfusion','dbzsupersonicwarriors','warioland4','ducklife5','learntofly3','bloxors','electricman2','portal','portal2','skywire2','ducklife6','boxingrandom','cellmachine','stickmanboost','vex3','vex4','skibidi1v100','goldeneye007','majorasmask','papermario','mariogolf','pokemonstadium','excitebike64','pokemonsnap','marioparty3','sonicadvance2','bowsersinsidestory','spirittracks','thesims2','tetrisds','sonicrush','thesims3','superprincesspeach','legobatman','doom2','dukenukemadvance','mariopartyadvance','mariopinballland','pacmanworld','rayman3','shrek2','simcity','simpsonsroadrage','diddykongracing','waverace64','quest64','gex64','dukenukem64','mortalkombat4','badpiggies','supermarioflash2','swordsandsandals','swordsandsandals2','wordle','vex',
+].map(slug => ({
+  name: slug.replace(/-/g, ' ').replace(/(\d+)/, ' $1').replace(/\s+/g, ' ').trim(),
+  slug,
+  url: `${SERAPH_BASE}/${slug}/index.html`,
+  cover: `${SERAPH_IMG}/${slug}.png`,
+  source: 'seraph',
+}));
+
 const COVER_URL = 'https://cdn.jsdelivr.net/gh/gn-math/covers@main';
 const HTML_URL = 'https://cdn.jsdelivr.net/gh/gn-math/html@main';
 const DISCORD_URL = 'https://discord.gg/gmb2RegMTd';
@@ -1769,12 +1894,23 @@ function sortZones(zones, sortBy) {
 function renderGames(zones) {
   const grid = document.getElementById('gamesGrid');
   const sortBy = document.getElementById('gamesSort').value;
-  const sorted = sortZones(zones, sortBy);
   const query = document.getElementById('gamesSearch').value.toLowerCase();
   grid.innerHTML = '';
-  if (!query) SPECIAL_CARDS.forEach(card => grid.appendChild(makeSpecialCard(card)));
-  if (!sorted.length) { grid.innerHTML += '<div class="games-loading">no games found</div>'; return; }
-  sorted.forEach(zone => grid.appendChild(makeGameCard(zone)));
+
+  if (currentSource === 'gnmath') {
+    const sorted = sortZones(zones, sortBy);
+    if (!query) SPECIAL_CARDS.forEach(card => grid.appendChild(makeSpecialCard(card)));
+    if (!sorted.length) { grid.innerHTML += '<div class="games-loading">no games found</div>'; return; }
+    sorted.forEach(zone => grid.appendChild(makeGameCard(zone)));
+  } else {
+    // seraph source
+    const filtered = query
+      ? seraphZones.filter(z => z.name.toLowerCase().includes(query))
+      : [...seraphZones];
+    if (sortBy === 'name') filtered.sort((a, b) => a.name.localeCompare(b.name));
+    if (!filtered.length) { grid.innerHTML = '<div class="games-loading">no games found</div>'; return; }
+    filtered.forEach(zone => grid.appendChild(makeSeraphCard(zone)));
+  }
 }
 
 function makeSpecialCard(card) {
@@ -1809,12 +1945,34 @@ function makeGameCard(zone) {
   return card;
 }
 
+function makeSeraphCard(zone) {
+  const card = document.createElement('div');
+  card.className = 'game-card';
+  card.addEventListener('click', () => openGame(zone));
+  const img = document.createElement('img');
+  img.loading = 'lazy';
+  img.alt = zone.name;
+  img.src = zone.cover;
+  const noImgEl = document.createElement('div');
+  noImgEl.className = 'seraph-no-img';
+  noImgEl.textContent = zone.name.charAt(0).toUpperCase();
+  img.onerror = function() { this.style.display = 'none'; noImgEl.style.display = 'flex'; };
+  const name = document.createElement('div');
+  name.className = 'game-card-name';
+  name.textContent = zone.name;
+  card.appendChild(img);
+  card.appendChild(noImgEl);
+  card.appendChild(name);
+  return card;
+}
+
 async function openGame(zone) {
   const viewer = document.getElementById('gameViewer');
   const frame = document.getElementById('gameFrame');
   document.getElementById('gameViewerTitle').textContent = zone.name;
-  document.getElementById('gameViewerAuthor').textContent = zone.author ? 'by ' + zone.author : '';
-  if (zone.url.startsWith('http')) {
+  document.getElementById('gameViewerAuthor').textContent = zone.author ? 'by ' + zone.author : (zone.source === 'seraph' ? 'via seraph' : '');
+  frame.srcdoc = '';
+  if (zone.source === 'seraph' || zone.url.startsWith('http')) {
     frame.src = zone.url;
   } else {
     const url = zone.url.replace('{HTML_URL}', HTML_URL).replace('{COVER_URL}', COVER_URL);
@@ -1847,11 +2005,33 @@ document.getElementById('gameNewTabBtn').addEventListener('click', () => {
   }
 });
 document.getElementById('gamesSearch').addEventListener('input', e => {
-  renderGames(allZones.filter(z => z.name.toLowerCase().includes(e.target.value.toLowerCase())));
+  const q = e.target.value.toLowerCase();
+  if (currentSource === 'gnmath') {
+    renderGames(q ? allZones.filter(z => z.name.toLowerCase().includes(q)) : allZones);
+  } else {
+    renderGames(q ? seraphZones.filter(z => z.name.toLowerCase().includes(q)) : seraphZones);
+  }
 });
+
 document.getElementById('gamesSort').addEventListener('change', () => {
   const q = document.getElementById('gamesSearch').value.toLowerCase();
-  renderGames(q ? allZones.filter(z => z.name.toLowerCase().includes(q)) : allZones);
+  if (currentSource === 'gnmath') {
+    renderGames(q ? allZones.filter(z => z.name.toLowerCase().includes(q)) : allZones);
+  } else {
+    renderGames(q ? seraphZones.filter(z => z.name.toLowerCase().includes(q)) : seraphZones);
+  }
+});
+
+document.querySelectorAll('.source-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.source-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentSource = btn.dataset.source;
+    document.getElementById('gamesSearch').value = '';
+    const sortEl = document.getElementById('gamesSort');
+    sortEl.style.display = currentSource === 'seraph' ? 'none' : '';
+    renderGames(currentSource === 'gnmath' ? allZones : seraphZones);
+  });
 });
 
 loadGames();

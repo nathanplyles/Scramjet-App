@@ -11,9 +11,9 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg: #09090b;
-    --surface: #111113;
-    --surface2: #18181c;
+    --bg: #050507;
+    --surface: #0a0a0d;
+    --surface2: #111115;
     --border: rgba(255,255,255,0.06);
     --border-hi: rgba(255,255,255,0.1);
     --text: #e8e8e8;
@@ -1201,15 +1201,15 @@ function drawParticles() {
 let rainDrops = [], splashes = [];
 function initRain() {
   splashes = [];
-  const cols = Math.floor(W / 9);
+  const cols = Math.floor(W / 7);
   rainDrops = Array.from({ length: cols }, (_, i) => ({
     x: Math.random() * W,
     y: Math.random() * -H,
-    speed: Math.random() * 4 + 3,
-    length: Math.floor(Math.random() * 22 + 10),
-    opacity: Math.random() * 0.25 + 0.05,
-    width: Math.random() * 0.6 + 0.2,
-    wind: Math.random() * 1.2 + 0.6,
+    speed: Math.random() * 5 + 4,
+    length: Math.floor(Math.random() * 28 + 14),
+    opacity: Math.random() * 0.38 + 0.12,
+    width: Math.random() * 0.7 + 0.2,
+    wind: Math.random() * 1.4 + 0.8,
   }));
 }
 
@@ -1383,11 +1383,14 @@ function drawStarfield() {
   starTick++;
   ctx.clearRect(0, 0, W, H);
 
-  // faint nebula follows mouse
+  // faint nebula follows mouse — heavily feathered, no hard edge
   if (mouse.x !== -9999) {
-    const grad = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, W * 0.35);
-    grad.addColorStop(0, 'rgba(20,15,40,0.12)');
-    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    const r = W * 0.42;
+    const grad = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, r);
+    grad.addColorStop(0,   'rgba(18,12,35,0.09)');
+    grad.addColorStop(0.4, 'rgba(14,10,28,0.05)');
+    grad.addColorStop(0.75,'rgba(8,6,16,0.02)');
+    grad.addColorStop(1,   'rgba(0,0,0,0)');
     ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
   }
 
@@ -1472,12 +1475,18 @@ function drawDotGrid() {
   ctx.clearRect(0, 0, W, H);
   const bulgeRadius = 140;
   const maxShift = 18;
+  const waveTime = dotTick * 0.012;
 
   for (let d of dotGrid) {
     d.phase += d.phaseSpeed;
     const breathe = Math.sin(d.phase) * 0.3;
 
-    let tx = d.bx, ty = d.by;
+    // Wave: each dot gets a gentle vertical sine offset based on its x position
+    const waveOffset = Math.sin(d.bx * 0.022 + waveTime) * 6
+                     + Math.sin(d.bx * 0.011 - waveTime * 0.7) * 3;
+
+    let tx = d.bx;
+    let ty = d.by + waveOffset;
     let extraR = 0, extraAlpha = 0, greenTint = 0;
 
     if (mouse.x !== -9999) {
@@ -1486,7 +1495,7 @@ function drawDotGrid() {
       if (dist < bulgeRadius && dist > 0) {
         const force = Math.pow(1 - dist / bulgeRadius, 2);
         tx = d.bx + (dx / dist) * force * maxShift;
-        ty = d.by + (dy / dist) * force * maxShift;
+        ty = d.by + waveOffset + (dy / dist) * force * maxShift;
         extraR = force * 2.8;
         extraAlpha = force * 0.5;
         greenTint = force;
@@ -1494,8 +1503,8 @@ function drawDotGrid() {
     }
 
     // smooth toward target
-    d.x += (tx - d.x) * 0.12;
-    d.y += (ty - d.y) * 0.12;
+    d.x += (tx - d.x) * 0.1;
+    d.y += (ty - d.y) * 0.1;
 
     const r = d.baseR + extraR + breathe;
     const alpha = d.baseAlpha + extraAlpha;

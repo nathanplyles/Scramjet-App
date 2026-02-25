@@ -426,7 +426,7 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
 
 /* ── TASKBAR ── */
 #taskbar {
-  position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+  position: fixed; bottom: 18px; left: 50%;
   z-index: 100;
   display: flex; align-items: center; gap: 4px;
   background: rgba(8,8,11,0.85); backdrop-filter: blur(28px);
@@ -434,7 +434,11 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
   border-top-color: rgba(255,255,255,0.1);
   border-radius: 18px; padding: 6px 8px;
   box-shadow: 0 8px 40px rgba(0,0,0,0.6);
-  opacity: 0; animation: fadeUp 0.7s ease forwards 0.8s;
+  opacity: 0; animation: taskbarIn 0.7s ease forwards 0.8s;
+}
+@keyframes taskbarIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 .taskbar-btn {

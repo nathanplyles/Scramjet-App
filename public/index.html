@@ -1804,7 +1804,8 @@ function makeRow(track, showAdd) {
   const el = document.createElement('div');
   el.className = 'music-result-row' + (currentTrack?.id === track.id ? ' playing' : '');
   el.dataset.id = track.id;
-  const thumb = track.album?.images?.[2]?.url || track.album?.images?.[0]?.url || '';
+  const _rawThumb = track.album?.images?.[2]?.url || track.album?.images?.[0]?.url || '';
+  const thumb = _rawThumb ? '/api/img/' + _rawThumb.replace('https://', '') : '';
   const artist = track.artists?.map(a => a.name).join(', ') || '';
   const dur = fmtTime(Math.floor((track.duration_ms || 0) / 1000));
   el.innerHTML =
@@ -1849,8 +1850,9 @@ async function playTrack(track) {
   const artEl = document.getElementById('musicArt');
   const bgEl = document.getElementById('musicArtBg');
   if (art) {
-    artEl.src = art; artEl.classList.add('on');
-    bgEl.style.backgroundImage = 'url(' + art + ')'; bgEl.classList.add('on');
+    const artProxied = art ? '/api/img/' + art.replace('https://', '') : art;
+    artEl.src = artProxied; artEl.classList.add('on');
+    bgEl.style.backgroundImage = 'url(' + artProxied + ')'; bgEl.classList.add('on');
     document.getElementById('musicArtPlaceholder').classList.add('hidden');
   }
   document.querySelectorAll('.music-result-row').forEach(r => r.classList.toggle('playing', r.dataset.id === track.id));

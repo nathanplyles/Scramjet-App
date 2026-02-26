@@ -18,16 +18,12 @@ Object.assign(wisp.options, {
 	dns_servers: ["1.1.1.3", "1.0.0.3"],
 });
 
-let rawNodeReq = null;
-
 const fastify = Fastify({
 	serverFactory: (handler) => {
 		return createServer()
 			.on("request", (req, res) => {
 				res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
 				res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
-				// Stash raw node req so the Spotify proxy can read the unmodified URL
-				rawNodeReq = req;
 				handler(req, res);
 			})
 			.on("upgrade", (req, socket, head) => {
@@ -41,36 +37,30 @@ fastify.register(fastifyStatic, {
 	root: publicPath,
 	decorateReply: true,
 });
-
 fastify.register(fastifyStatic, {
 	root: scramjetPath,
 	prefix: "/scram/",
 	decorateReply: false,
 });
-
 fastify.register(fastifyStatic, {
 	root: libcurlPath,
 	prefix: "/libcurl/",
 	decorateReply: false,
 });
-
 fastify.register(fastifyStatic, {
 	root: baremuxPath,
 	prefix: "/baremux/",
 	decorateReply: false,
 });
 
-// ── Spotify proxy ──────────────────────────────────────────────────────
-// Routes /api/spotify/<path>?<qs> → https://api.spotify.com/v1/<path>?<qs>
-// Uses the raw Node.js URL so Fastify never touches the query string.
-// Credentials stay on the server; token is cached for ~1 hour.
+// ── Spotify ────────────────────────────────────────────────────────────
 let cachedToken = null;
 let cachedTokenExp = 0;
 
 async function getSpotifyToken() {
 	const clientId = process.env.SPOTIFY_CLIENT_ID;
 	const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-	if (!clientId || !clientSecret) throw new Error("Spotify credentials not set in environment.");
+	if (!clientId || !clientSecret) throw new Error("Spotify credentials not set.");
 	if (cachedToken && Date.now() < cachedTokenExp) return cachedToken;
 
 	const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
@@ -82,32 +72,54 @@ async function getSpotifyToken() {
 		},
 		body: "grant_type=client_credentials",
 	});
-	if (!res.ok) throw new Error("Spotify auth failed: " + (await res.text()));
+	if (!res.ok) {
+		const t = await res.text();
+		throw new Error(`Spotify auth failed (${res.status}): ${t}`);
+	}
 	const data = await res.json();
 	cachedToken = data.access_token;
 	cachedTokenExp = Date.now() + (data.expires_in - 60) * 1000;
 	return cachedToken;
 }
 
+// Proxy all Spotify API calls — keeps credentials server-side, bypasses COEP
 fastify.get("/api/spotify/*", async (request, reply) => {
 	if (!process.env.SPOTIFY_CLIENT_ID) {
 		return reply.code(503).send({ error: "Spotify not configured on server." });
 	}
 	try {
 		const token = await getSpotifyToken();
-		// Use raw node URL to preserve query string exactly as the browser sent it
-		const rawUrl = request.raw.url;
-		const spotifyPath = rawUrl.slice("/api/spotify/".length);
+		const spotifyPath = request.raw.url.slice("/api/spotify/".length);
 		const url = "https://api.spotify.com/v1/" + spotifyPath;
+		console.log("[spotify]", url);
 		const res = await fetch(url, {
-			headers: { Authorization: `Bearer ${token}` },
+			headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
 		});
-		const body = await res.json();
-		if (!res.ok) console.error("[spotify proxy] error body:", JSON.stringify(body));
-		reply.code(res.status).send(body);
+		const text = await res.text();
+		if (!res.ok) console.error("[spotify] error", res.status, text.slice(0, 300));
+		reply.code(res.status).header("content-type", "application/json").send(text);
 	} catch (err) {
-		console.error("Spotify proxy error:", err.message);
-		reply.code(502).send({ error: err.message });
+		console.error("[spotify] crash:", err.message);
+		reply.code(502).send(JSON.stringify({ error: err.message }));
+	}
+});
+
+// Proxy Spotify CDN images — bypasses COEP for album art
+fastify.get("/api/img/*", async (request, reply) => {
+	try {
+		const imgPath = request.raw.url.slice("/api/img/".length);
+		const url = "https://" + imgPath;
+		const res = await fetch(url);
+		if (!res.ok) return reply.code(res.status).send();
+		const buf = Buffer.from(await res.arrayBuffer());
+		const ct = res.headers.get("content-type") || "image/jpeg";
+		reply
+			.header("content-type", ct)
+			.header("cache-control", "public, max-age=86400")
+			.header("cross-origin-resource-policy", "cross-origin")
+			.send(buf);
+	} catch (err) {
+		reply.code(502).send();
 	}
 });
 // ──────────────────────────────────────────────────────────────────────
@@ -140,7 +152,4 @@ function shutdown() {
 let port = parseInt(process.env.PORT || "");
 if (isNaN(port)) port = 8080;
 
-fastify.listen({
-	port: port,
-	host: "0.0.0.0",
-});
+fastify.listen({ port, host: "0.0.0.0" });

@@ -96,13 +96,15 @@ fastify.get("/api/spotify/*", async (request, reply) => {
 	try {
 		const token = await getSpotifyToken();
 		// Use raw node URL to preserve query string exactly as the browser sent it
-		const rawUrl = request.raw.url; // e.g. /api/spotify/search?q=hello&type=track&limit=30
-		const spotifyPath = rawUrl.slice("/api/spotify/".length); // search?q=hello&type=track&limit=30
+		const rawUrl = request.raw.url;
+		const spotifyPath = rawUrl.slice("/api/spotify/".length);
 		const url = "https://api.spotify.com/v1/" + spotifyPath;
+		console.log("[spotify proxy]", res?.status ?? "->", url);
 		const res = await fetch(url, {
 			headers: { Authorization: `Bearer ${token}` },
 		});
 		const body = await res.json();
+		if (!res.ok) console.error("[spotify proxy] error body:", JSON.stringify(body));
 		reply.code(res.status).send(body);
 	} catch (err) {
 		console.error("Spotify proxy error:", err.message);

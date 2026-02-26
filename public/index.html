@@ -26,12 +26,7 @@
 }
 
 /* ── COLOR SCHEMES ── */
-/* ── COLOR SCHEMES — each shifts both accent + bg warmth/coolness ── */
-body.scheme-aurora  { --accent:#7dd3fc; --accent-rgb:125,211,252; --bg:#010308; --surface:#05080f; --surface2:#0a0e18; }
-body.scheme-dusk    { --accent:#c4b5fd; --accent-rgb:196,181,253; --bg:#030208; --surface:#08050f; --surface2:#100a1a; }
-body.scheme-ember   { --accent:#fbbf24; --accent-rgb:251,191,36;  --bg:#060300; --surface:#0d0700; --surface2:#150e00; }
-body.scheme-rose    { --accent:#f9a8d4; --accent-rgb:249,168,212; --bg:#060204; --surface:#0f0508; --surface2:#180a10; }
-body.scheme-glacial { --accent:#67e8f9; --accent-rgb:103,232,249; --bg:#010507; --surface:#030d10; --surface2:#071418; }
+/* scheme classes injected by JS */
 
 html, body { height: 100%; overflow: hidden; cursor: none; background: var(--bg); color: var(--text); font-family: var(--font-mono); font-weight: 300; font-size: 13px; }
 
@@ -536,27 +531,30 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
 .action-btn.dim { color: #444; }
 .action-btn.dim:hover { color: #888; }
 
-/* Color scheme picker */
+/* Color scheme picker — 3×3 grid */
 .scheme-options {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px;
 }
 .scheme-btn {
   display: flex; align-items: center; gap: 8px;
-  padding: 9px 12px; background: rgba(255,255,255,0.03);
+  padding: 9px 12px; background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.09); border-radius: 8px;
   color: #777; font-family: var(--font-mono); font-size: 10px;
   cursor: none; transition: all 0.15s; letter-spacing: 0.04em;
 }
-.scheme-btn:hover { border-color: rgba(255,255,255,0.16); color: #bbb; }
+.scheme-btn:hover { border-color: rgba(255,255,255,0.16); color: #bbb; background: rgba(255,255,255,0.06); }
 .scheme-btn.active {
   border-color: var(--c);
   background: rgba(255,255,255,0.05);
   color: var(--c);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--c) 20%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--c) 22%, transparent);
 }
 .scheme-dot {
   width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  transition: transform 0.15s; flex-shrink: 0;
 }
+.scheme-btn:hover .scheme-dot { transform: scale(1.2); }
+.scheme-btn.active .scheme-dot { transform: scale(1.15); }
 
 /* ── PLACEHOLDER APPS ── */
 .placeholder-screen {
@@ -856,26 +854,7 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
 
     <div class="settings-section">
       <div class="settings-section-title">color scheme</div>
-      <div class="scheme-options" id="schemeOptions">
-        <button class="scheme-btn active" data-scheme="midnight" style="--c:#c8f0a0">
-          <span class="scheme-dot" style="background:#c8f0a0;box-shadow:0 0 8px rgba(200,240,160,0.6)"></span>midnight
-        </button>
-        <button class="scheme-btn" data-scheme="aurora" style="--c:#7dd3fc">
-          <span class="scheme-dot" style="background:#7dd3fc;box-shadow:0 0 8px rgba(125,211,252,0.6)"></span>aurora
-        </button>
-        <button class="scheme-btn" data-scheme="dusk" style="--c:#c4b5fd">
-          <span class="scheme-dot" style="background:#c4b5fd;box-shadow:0 0 8px rgba(196,181,253,0.6)"></span>dusk
-        </button>
-        <button class="scheme-btn" data-scheme="ember" style="--c:#fbbf24">
-          <span class="scheme-dot" style="background:#fbbf24;box-shadow:0 0 8px rgba(251,191,36,0.6)"></span>ember
-        </button>
-        <button class="scheme-btn" data-scheme="rose" style="--c:#f9a8d4">
-          <span class="scheme-dot" style="background:#f9a8d4;box-shadow:0 0 8px rgba(249,168,212,0.6)"></span>rose
-        </button>
-        <button class="scheme-btn" data-scheme="glacial" style="--c:#67e8f9">
-          <span class="scheme-dot" style="background:#67e8f9;box-shadow:0 0 8px rgba(103,232,249,0.6)"></span>glacial
-        </button>
-      </div>
+      <div class="scheme-options" id="schemeOptions"></div>
     </div>
 
     <div class="settings-section">
@@ -1495,17 +1474,47 @@ document.getElementById('applyCloak').addEventListener('click', () => {
   setTimeout(() => btn.textContent = 'apply cloak', 1500);
 });
 // ── COLOR SCHEME ───────────────────────────────────────────────────────
+// ── COLOR SCHEMES ─────────────────────────────────────────────────────
+const SCHEMES = [
+  { id:'midnight', name:'midnight', accent:'#c8f0a0', rgb:'200,240,160', bg:'#020204', s1:'#07070a', s2:'#0d0d11' },
+  { id:'aurora',   name:'aurora',   accent:'#7dd3fc', rgb:'125,211,252', bg:'#010308', s1:'#03060f', s2:'#070d1a' },
+  { id:'dusk',     name:'dusk',     accent:'#c4b5fd', rgb:'196,181,253', bg:'#030208', s1:'#07050f', s2:'#0e0a1a' },
+  { id:'ember',    name:'ember',    accent:'#fbbf24', rgb:'251,191,36',  bg:'#060300', s1:'#0e0700', s2:'#180e00' },
+  { id:'rose',     name:'rose',     accent:'#f9a8d4', rgb:'249,168,212', bg:'#060204', s1:'#0f0508', s2:'#190a10' },
+  { id:'glacial',  name:'glacial',  accent:'#67e8f9', rgb:'103,232,249', bg:'#010507', s1:'#030d10', s2:'#07141e' },
+  { id:'crimson',  name:'crimson',  accent:'#fca5a5', rgb:'252,165,165', bg:'#060101', s1:'#0f0404', s2:'#190808' },
+  { id:'void',     name:'void',     accent:'#a78bfa', rgb:'167,139,250', bg:'#020108', s1:'#06030f', s2:'#0d071c' },
+  { id:'ash',      name:'ash',      accent:'#d4d4d8', rgb:'212,212,216', bg:'#020202', s1:'#080808', s2:'#0f0f0f' },
+];
+
+// Inject CSS for all schemes
+const schemeStyle = document.createElement('style');
+schemeStyle.textContent = SCHEMES.map(s =>
+  s.id === 'midnight' ? '' :
+  `body.scheme-${s.id}{--accent:${s.accent};--accent-rgb:${s.rgb};--bg:${s.bg};--surface:${s.s1};--surface2:${s.s2};}`
+).join('\n');
+document.head.appendChild(schemeStyle);
+
+// Build scheme grid
+const schemeGrid = document.getElementById('schemeOptions');
+SCHEMES.forEach(s => {
+  const btn = document.createElement('button');
+  btn.className = 'scheme-btn';
+  btn.dataset.scheme = s.id;
+  btn.style.setProperty('--c', s.accent);
+  btn.innerHTML = `<span class="scheme-dot" style="background:${s.accent};box-shadow:0 0 6px ${s.accent}88"></span>${s.name}`;
+  btn.addEventListener('click', () => applyScheme(s.id));
+  schemeGrid.appendChild(btn);
+});
+
 const savedScheme = localStorage.getItem('oblivionScheme') || 'midnight';
 function applyScheme(name) {
-  document.body.className = document.body.className.replace(/scheme-\w+/g, '').trim();
+  document.body.className = document.body.className.replace(/scheme-\S+/g, '').trim();
   if (name !== 'midnight') document.body.classList.add('scheme-' + name);
   localStorage.setItem('oblivionScheme', name);
   document.querySelectorAll('.scheme-btn').forEach(b => b.classList.toggle('active', b.dataset.scheme === name));
 }
 applyScheme(savedScheme);
-document.querySelectorAll('.scheme-btn').forEach(btn => {
-  btn.addEventListener('click', () => applyScheme(btn.dataset.scheme));
-});
 
 document.getElementById('resetCloak').addEventListener('click', () => {
   document.title = 'oblivion'; setFavicon('/void-icon.svg');

@@ -157,44 +157,24 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
   box-shadow: 0 1px 0 rgba(255,255,255,0.04);
 }
 
-.browser-app-label {
-  font-family: var(--font-display);
-  font-size: 0.85rem;
-  color: rgba(255,255,255,0.35);
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-  flex-shrink: 0;
-  padding-right: 10px;
-  border-right: 1px solid rgba(255,255,255,0.08);
-  margin-right: 4px;
-  user-select: none;
-}
-.browser-app-label em {
-  font-style: italic;
-  color: rgba(255,255,255,0.18);
-  font-size: 0.78rem;
-}
-
-/* Chrome-style tabs — shrink/grow with content */
+/* Chrome-style tabs — shrink/grow smoothly */
 .browser-tabs {
-  display: flex; align-items: flex-end; gap: 0;
+  display: flex; align-items: center; gap: 3px;
   flex: 1; overflow: hidden; min-width: 0;
-  height: 36px;
 }
 
 .browser-tab {
   display: flex; align-items: center; gap: 6px;
-  padding: 0 10px 0 12px;
-  height: 32px;
-  border-radius: 8px 8px 0 0;
+  padding: 5px 10px 5px 12px;
+  height: 30px;
+  border-radius: 7px;
   background: transparent;
   border: 1px solid transparent;
-  border-bottom: none;
   color: #555; font-family: var(--font-mono); font-size: 11px;
   cursor: none;
-  /* Flexible width like Chrome — min 60px, max 220px, shrinks as tabs added */
-  flex: 1; min-width: 60px; max-width: 220px;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  flex: 1; min-width: 64px; max-width: 210px;
+  /* Smooth width transitions as tabs are added/removed */
+  transition: flex-basis 0.25s ease, max-width 0.25s ease, background 0.15s, color 0.15s, border-color 0.15s;
   position: relative; overflow: hidden;
 }
 .browser-tab.active {
@@ -212,14 +192,17 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
   background: none; border: none; color: #444; font-size: 13px;
   cursor: none; padding: 2px 3px; line-height: 1; transition: color 0.15s;
   flex-shrink: 0; border-radius: 4px; margin-left: 2px;
+  opacity: 0; transition: opacity 0.15s, color 0.15s;
 }
-.browser-tab-close:hover { color: #aaa; background: rgba(255,255,255,0.06); }
+.browser-tab:hover .browser-tab-close,
+.browser-tab.active .browser-tab-close { opacity: 1; }
+.browser-tab-close:hover { color: #ccc; background: rgba(255,255,255,0.06); }
 
-/* + button sits right after last tab */
+/* + sits right after last tab, no gap */
 .browser-tab-new {
-  background: none; border: none; color: #555; font-size: 18px; line-height: 1;
-  cursor: none; padding: 6px 8px; transition: color 0.15s; flex-shrink: 0;
-  font-family: var(--font-mono); align-self: flex-end; margin-bottom: 2px;
+  background: none; border: none; color: #555; font-size: 17px; line-height: 1;
+  cursor: none; padding: 5px 7px; transition: color 0.15s; flex-shrink: 0;
+  font-family: var(--font-mono);
 }
 .browser-tab-new:hover { color: #ccc; }
 
@@ -305,12 +288,21 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
   transform: translateY(-12px);
 }
 .newtab-hint {
-  font-size: 11px; color: #3a3a40; letter-spacing: 0.12em;
-  margin-top: 16px; text-transform: uppercase;
+  font-size: 11px; color: #3a3a42; letter-spacing: 0.12em;
+  margin-top: 18px; text-transform: uppercase;
   transition: opacity 0.35s ease;
   pointer-events: none;
+  display: flex; align-items: center; gap: 7px;
 }
 .newtab-hint.hidden { opacity: 0; }
+.newtab-arrow {
+  font-size: 14px; color: #444;
+  animation: arrowBob 2s ease-in-out infinite;
+}
+@keyframes arrowBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
 
 /* ── GAMES APP ── */
 #screen-games {
@@ -668,7 +660,6 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
 <!-- ══ BROWSER SCREEN ══ -->
 <div class="screen" id="screen-browser">
   <div class="browser-bar">
-    <span class="browser-app-label">oblivion <em>browser</em></span>
     <div class="browser-tabs" id="browserTabs"></div>
     <button class="browser-tab-new" id="newTabBtn" title="new tab">+</button>
   </div>
@@ -1111,7 +1102,7 @@ function createTab(url = null) {
     iframe.allowFullscreen = true;
     frame.appendChild(iframe);
   } else {
-    frame.innerHTML = `<div class="newtab-page"><div class="newtab-wordmark" id="newtab-wm-${id}">oblivion</div><div class="newtab-hint" id="newtab-hint-${id}">enter a url or search above</div></div>`;
+    frame.innerHTML = `<div class="newtab-page"><div class="newtab-wordmark" id="newtab-wm-${id}">oblivion</div><div class="newtab-hint" id="newtab-hint-${id}"><span class="newtab-arrow">↑</span> type in the search bar above</div></div>`;
   }
 
   const tab = { id, url, title: url ? new URL(url.startsWith('http') ? url : 'https://'+url).hostname : 'new tab', frame };
@@ -1320,9 +1311,11 @@ const dotEl = document.getElementById('cursorDot');
 let glowPos = { x: -9999, y: -9999 };
 
 function animCursor() {
-  glowPos.x += (mouse.x - glowPos.x) * 0.18;
-  glowPos.y += (mouse.y - glowPos.y) * 0.18;
+  // Glow has very slight lag — feels attached not floaty
+  glowPos.x += (mouse.x - glowPos.x) * 0.55;
+  glowPos.y += (mouse.y - glowPos.y) * 0.55;
   glowEl.style.left = glowPos.x + 'px'; glowEl.style.top = glowPos.y + 'px';
+  // Dot snaps directly to mouse — no lag at all
   dotEl.style.left = mouse.x + 'px'; dotEl.style.top = mouse.y + 'px';
   requestAnimationFrame(animCursor);
 }
@@ -1331,20 +1324,28 @@ window.addEventListener('mousemove', () => { glowEl.style.opacity = '1'; dotEl.s
 window.addEventListener('mouseleave', () => { glowEl.style.opacity = '0'; dotEl.style.opacity = '0'; });
 
 // Trail
-const TRAIL_COUNT = 12;
+const TRAIL_COUNT = 8;
 const trailDots = Array.from({ length: TRAIL_COUNT }, (_, i) => {
   const el = document.createElement('div');
   el.className = 'cursor-trail';
-  const size = Math.max(2, 5 - i * 0.3);
+  const size = Math.max(1.5, 4 - i * 0.35);
   el.style.cssText = `width:${size}px;height:${size}px;opacity:0;`;
   document.body.appendChild(el);
   return { el, x: -9999, y: -9999 };
 });
 let trailVisible = false;
 function animTrail() {
-  for (let i = TRAIL_COUNT-1; i > 0; i--) { trailDots[i].x += (trailDots[i-1].x-trailDots[i].x)*0.35; trailDots[i].y += (trailDots[i-1].y-trailDots[i].y)*0.35; }
-  trailDots[0].x += (mouse.x-trailDots[0].x)*0.5; trailDots[0].y += (mouse.y-trailDots[0].y)*0.5;
-  trailDots.forEach((d,i) => { d.el.style.left=d.x+'px'; d.el.style.top=d.y+'px'; d.el.style.opacity=trailVisible?(1-i/TRAIL_COUNT)*0.55:0; });
+  // Each dot chases the one ahead very aggressively — trail stays tight
+  trailDots[0].x += (mouse.x - trailDots[0].x) * 0.75;
+  trailDots[0].y += (mouse.y - trailDots[0].y) * 0.75;
+  for (let i = 1; i < TRAIL_COUNT; i++) {
+    trailDots[i].x += (trailDots[i-1].x - trailDots[i].x) * 0.65;
+    trailDots[i].y += (trailDots[i-1].y - trailDots[i].y) * 0.65;
+  }
+  trailDots.forEach((d, i) => {
+    d.el.style.left = d.x + 'px'; d.el.style.top = d.y + 'px';
+    d.el.style.opacity = trailVisible ? (1 - i / TRAIL_COUNT) * 0.5 : 0;
+  });
   requestAnimationFrame(animTrail);
 }
 animTrail();

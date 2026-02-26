@@ -11,9 +11,9 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #050507;
-  --surface: #0a0a0d;
-  --surface2: #111115;
+  --bg: #020204;
+  --surface: #07070a;
+  --surface2: #0d0d11;
   --border: rgba(255,255,255,0.10);
   --border-hi: rgba(255,255,255,0.16);
   --text: #e8e8e8;
@@ -62,7 +62,7 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
 }
 .cursor-trail {
   position: fixed; border-radius: 50%; pointer-events: none; z-index: 99997;
-  transform: translate(-50%,-50%); background: rgba(200,240,160,0.5);
+  transform: translate(-50%,-50%); background: rgba(235,245,220,0.9);
 }
 
 /* ── PANIC FLASH ── */
@@ -155,9 +155,10 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
   flex-shrink: 0;
   z-index: 10;
   box-shadow: 0 1px 0 rgba(255,255,255,0.04);
+  overflow: hidden;
 }
 
-/* Chrome-style tabs — shrink/grow smoothly */
+/* Chrome-style tabs — + button lives inside, stays glued after last tab */
 .browser-tabs {
   display: flex; align-items: center; gap: 0;
   flex: 1; overflow: hidden; min-width: 0;
@@ -678,8 +679,9 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
 <!-- ══ BROWSER SCREEN ══ -->
 <div class="screen" id="screen-browser">
   <div class="browser-bar">
-    <div class="browser-tabs" id="browserTabs"></div>
-    <button class="browser-tab-new" id="newTabBtn" title="new tab">+</button>
+    <div class="browser-tabs" id="browserTabs">
+      <button class="browser-tab-new" id="newTabBtn" title="new tab">+</button>
+    </div>
   </div>
   <div class="browser-addr-row">
     <button class="browser-nav-btn" id="navBack" title="back">←</button>
@@ -1125,27 +1127,32 @@ function createTab(url = null) {
     frame.innerHTML = `<div class="newtab-page"><div class="newtab-wordmark" id="newtab-wm-${id}">oblivion</div><div class="newtab-hint" id="newtab-hint-${id}"><span class="newtab-arrow">↑</span> type in the search bar above</div></div>`;
   }
 
-  const tab = { id, url, title: url ? new URL(url.startsWith('http') ? url : 'https://'+url).hostname : 'new tab', frame };
+  const tab = { id, url, title: url ? (()=>{ try{ return new URL(url.startsWith('http')?url:'https://'+url).hostname; }catch(e){ return url.slice(0,20); } })() : 'new tab', frame };
   tabs.push(tab);
   renderTabs();
-  // play enter animation on the new tab element
+  // animate the new tab in — element now exists after renderTabs
   const el = document.querySelector(`.browser-tab[data-tab-id="${id}"]`);
-  if (el) { el.classList.add('tab-entering'); el.addEventListener('animationend', () => el.classList.remove('tab-entering'), { once: true }); }
+  if (el) {
+    el.classList.add('tab-entering');
+    el.addEventListener('animationend', () => el.classList.remove('tab-entering'), { once: true });
+  }
   setActiveTab(id);
   return tab;
 }
 
 function renderTabs() {
   const container = document.getElementById('browserTabs');
-  container.innerHTML = '';
+  const newBtn = document.getElementById('newTabBtn');
+  // Remove all tab elements (leave + button)
+  container.querySelectorAll('.browser-tab').forEach(el => el.remove());
   tabs.forEach(tab => {
     const el = document.createElement('div');
     el.className = 'browser-tab' + (tab.id === activeTabId ? ' active' : '');
     el.dataset.tabId = tab.id;
     el.innerHTML = `<span class="browser-tab-title">${tab.title}</span><button class="browser-tab-close" data-id="${tab.id}">×</button>`;
     el.addEventListener('click', e => { if (!e.target.classList.contains('browser-tab-close')) setActiveTab(tab.id); });
-    el.querySelector('.browser-tab-close').addEventListener('click', () => closeTab(tab.id));
-    container.appendChild(el);
+    el.querySelector('.browser-tab-close').addEventListener('click', e => { e.stopPropagation(); closeTab(tab.id); });
+    container.insertBefore(el, newBtn);
   });
 }
 
@@ -1366,15 +1373,15 @@ const trailDots = Array.from({ length: TRAIL_COUNT }, (_, i) => {
 });
 let trailVisible = false;
 function animTrail() {
-  trailDots[0].x += (mouse.x - trailDots[0].x) * 0.75;
-  trailDots[0].y += (mouse.y - trailDots[0].y) * 0.75;
+  trailDots[0].x += (mouse.x - trailDots[0].x) * 0.6;
+  trailDots[0].y += (mouse.y - trailDots[0].y) * 0.6;
   for (let i = 1; i < TRAIL_COUNT; i++) {
-    trailDots[i].x += (trailDots[i-1].x - trailDots[i].x) * 0.55;
-    trailDots[i].y += (trailDots[i-1].y - trailDots[i].y) * 0.55;
+    trailDots[i].x += (trailDots[i-1].x - trailDots[i].x) * 0.35;
+    trailDots[i].y += (trailDots[i-1].y - trailDots[i].y) * 0.35;
   }
   trailDots.forEach((d, i) => {
     d.el.style.left = d.x + 'px'; d.el.style.top = d.y + 'px';
-    d.el.style.opacity = trailVisible ? (1 - i / TRAIL_COUNT) * 0.85 : 0;
+    d.el.style.opacity = trailVisible ? (1 - i / TRAIL_COUNT) * 0.9 : 0;
   });
   requestAnimationFrame(animTrail);
 }

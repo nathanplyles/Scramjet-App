@@ -14,15 +14,23 @@
   --bg: #050507;
   --surface: #0a0a0d;
   --surface2: #111115;
-  --border: rgba(255,255,255,0.07);
-  --border-hi: rgba(255,255,255,0.12);
+  --border: rgba(255,255,255,0.10);
+  --border-hi: rgba(255,255,255,0.16);
   --text: #e8e8e8;
   --muted: #666;
   --dim: #444;
   --accent: #c8f0a0;
+  --accent-rgb: 200,240,160;
   --font-display: 'DM Serif Display', serif;
   --font-mono: 'DM Mono', monospace;
 }
+
+/* ── COLOR SCHEMES ── */
+body.scheme-blue   { --accent: #93c5fd; --accent-rgb: 147,197,253; }
+body.scheme-purple { --accent: #c4b5fd; --accent-rgb: 196,181,253; }
+body.scheme-amber  { --accent: #fcd34d; --accent-rgb: 252,211,77; }
+body.scheme-red    { --accent: #fca5a5; --accent-rgb: 252,165,165; }
+body.scheme-cyan   { --accent: #67e8f9; --accent-rgb: 103,232,249; }
 
 html, body { height: 100%; overflow: hidden; cursor: none; background: var(--bg); color: var(--text); font-family: var(--font-mono); font-weight: 300; font-size: 13px; }
 
@@ -107,17 +115,22 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
   transition: transform 0.18s ease;
 }
 .app-icon:hover { transform: translateY(-3px); }
-.app-icon:hover .icon-tile { border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); }
-.app-icon:hover .icon-label { color: #aaa; }
+.app-icon:hover .icon-tile {
+  border-color: rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.06);
+  box-shadow: 0 0 18px rgba(var(--accent-rgb),0.1), 0 4px 20px rgba(0,0,0,0.4);
+}
+.app-icon:hover .icon-label { color: #ccc; }
 
 .icon-tile {
   width: 72px; height: 72px; border-radius: 18px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.055);
-  border-top-color: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-top-color: rgba(255,255,255,0.16);
   display: flex; align-items: center; justify-content: center;
-  transition: all 0.18s;
+  transition: all 0.22s;
   backdrop-filter: blur(10px);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 .icon-tile svg { width: 30px; height: 30px; }
 
@@ -135,56 +148,87 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
 
 .browser-bar {
   display: flex; align-items: center; gap: 8px;
-  padding: 10px 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  background: rgba(5,5,7,0.7);
-  backdrop-filter: blur(20px);
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: rgba(6,6,9,0.85);
+  backdrop-filter: blur(24px);
   flex-shrink: 0;
   z-index: 10;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04);
 }
 
-/* Tabs */
-.browser-tabs {
-  display: flex; align-items: center; gap: 2px;
-  flex: 1; overflow-x: auto; overflow-y: hidden;
-  scrollbar-width: none; min-width: 0;
+.browser-app-label {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding-right: 10px;
+  border-right: 1px solid rgba(255,255,255,0.08);
+  margin-right: 4px;
+  user-select: none;
 }
-.browser-tabs::-webkit-scrollbar { display: none; }
+.browser-app-label em {
+  font-style: italic;
+  color: rgba(255,255,255,0.18);
+  font-size: 0.78rem;
+}
+
+/* Chrome-style tabs — shrink/grow with content */
+.browser-tabs {
+  display: flex; align-items: flex-end; gap: 0;
+  flex: 1; overflow: hidden; min-width: 0;
+  height: 36px;
+}
 
 .browser-tab {
   display: flex; align-items: center; gap: 6px;
-  padding: 5px 12px; border-radius: 6px;
-  background: transparent; border: 1px solid transparent;
+  padding: 0 10px 0 12px;
+  height: 32px;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
   color: #555; font-family: var(--font-mono); font-size: 11px;
-  cursor: none; white-space: nowrap; max-width: 180px;
-  transition: all 0.15s; flex-shrink: 0; position: relative;
+  cursor: none;
+  /* Flexible width like Chrome — min 60px, max 220px, shrinks as tabs added */
+  flex: 1; min-width: 60px; max-width: 220px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  position: relative; overflow: hidden;
 }
 .browser-tab.active {
-  background: rgba(255,255,255,0.05);
-  border-color: rgba(255,255,255,0.09);
-  color: #ccc;
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.10);
+  color: #ddd;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
 }
-.browser-tab:hover:not(.active) { color: #888; background: rgba(255,255,255,0.03); }
-.browser-tab-title { overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+.browser-tab:hover:not(.active) { color: #999; background: rgba(255,255,255,0.03); }
+.browser-tab-title {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  flex: 1; min-width: 0;
+}
 .browser-tab-close {
-  background: none; border: none; color: #555; font-size: 12px;
-  cursor: none; padding: 0; line-height: 1; transition: color 0.15s;
-  flex-shrink: 0;
+  background: none; border: none; color: #444; font-size: 13px;
+  cursor: none; padding: 2px 3px; line-height: 1; transition: color 0.15s;
+  flex-shrink: 0; border-radius: 4px; margin-left: 2px;
 }
-.browser-tab-close:hover { color: #aaa; }
+.browser-tab-close:hover { color: #aaa; background: rgba(255,255,255,0.06); }
+
+/* + button sits right after last tab */
 .browser-tab-new {
-  background: none; border: none; color: #555; font-size: 16px;
-  cursor: none; padding: 4px 8px; transition: color 0.15s; flex-shrink: 0;
-  font-family: var(--font-mono);
+  background: none; border: none; color: #555; font-size: 18px; line-height: 1;
+  cursor: none; padding: 6px 8px; transition: color 0.15s; flex-shrink: 0;
+  font-family: var(--font-mono); align-self: flex-end; margin-bottom: 2px;
 }
 .browser-tab-new:hover { color: #ccc; }
 
 /* Address bar row */
 .browser-addr-row {
   display: flex; align-items: center; gap: 8px;
-  padding: 6px 16px 6px;
-  border-bottom: 1px solid rgba(255,255,255,0.03);
-  background: rgba(5,5,7,0.5);
+  padding: 6px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  background: rgba(5,5,7,0.6);
   backdrop-filter: blur(20px);
   flex-shrink: 0;
 }
@@ -199,12 +243,16 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
 
 .browser-addr-wrap {
   flex: 1; display: flex; align-items: center;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.10);
   border-radius: 7px; padding: 6px 12px; gap: 8px;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
 }
-.browser-addr-wrap:focus-within { border-color: rgba(255,255,255,0.14); }
+.browser-addr-wrap:focus-within {
+  border-color: rgba(var(--accent-rgb),0.3);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb),0.07), inset 0 1px 0 rgba(255,255,255,0.04);
+}
 .browser-addr { flex: 1; background: none; border: none; outline: none; color: #ccc; font-family: var(--font-mono); font-size: 12px; }
 .browser-addr::placeholder { color: #444; }
 
@@ -241,9 +289,28 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
 .newtab-page {
   width: 100%; height: 100%;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 0;
+  gap: 0; position: relative; user-select: none;
 }
-.newtab-hint { font-size: 11px; color: #444; letter-spacing: 0.1em; margin-top: 24px; }
+.newtab-wordmark {
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 6vw, 4rem);
+  color: var(--text);
+  letter-spacing: -0.02em;
+  text-shadow: 0 0 60px rgba(255,255,255,0.14), 0 0 140px rgba(255,255,255,0.06);
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.newtab-wordmark.hidden {
+  opacity: 0;
+  transform: translateY(-12px);
+}
+.newtab-hint {
+  font-size: 11px; color: #3a3a40; letter-spacing: 0.12em;
+  margin-top: 16px; text-transform: uppercase;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+.newtab-hint.hidden { opacity: 0; }
 
 /* ── GAMES APP ── */
 #screen-games {
@@ -288,13 +355,14 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
 .games-grid.fading { opacity: 0; }
 
 .game-card {
-  background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04);
-  border-top-color: rgba(255,255,255,0.06); border-radius: 10px; overflow: hidden;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09);
+  border-top-color: rgba(255,255,255,0.13); border-radius: 10px; overflow: hidden;
   cursor: none; transition: border-color 0.18s, transform 0.18s, box-shadow 0.18s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 .game-card:hover {
-  border-color: rgba(200,240,160,0.15); transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  border-color: rgba(var(--accent-rgb),0.25); transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 16px rgba(var(--accent-rgb),0.06);
 }
 .game-card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: var(--surface2); }
 .game-card-name { padding: 7px 8px 8px; font-size: 10px; color: #777; text-align: center; line-height: 1.3; }
@@ -354,10 +422,15 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
 }
 .bg-option {
   border-radius: 8px; overflow: hidden; cursor: none;
-  border: 1px solid rgba(255,255,255,0.04);
-  transition: border-color 0.15s; position: relative;
+  border: 1px solid rgba(255,255,255,0.09);
+  transition: border-color 0.15s, box-shadow 0.15s; position: relative;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
-.bg-option.active { border-color: rgba(200,240,160,0.3); }
+.bg-option:hover { border-color: rgba(255,255,255,0.16); }
+.bg-option.active {
+  border-color: rgba(var(--accent-rgb),0.45);
+  box-shadow: 0 0 14px rgba(var(--accent-rgb),0.12);
+}
 .bg-option canvas { width: 100%; height: 52px; display: block; }
 .bg-option-label { font-size: 9px; color: #666; text-align: center; padding: 4px 0 5px; letter-spacing: 0.05em; }
 .bg-option.active .bg-option-label { color: var(--accent); }
@@ -382,11 +455,15 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
 .cloak-label { font-size: 9px; color: #555; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
 .input-row {
   display: flex; align-items: center; gap: 8px;
-  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10);
   border-radius: 7px; padding: 8px 12px; margin-bottom: 10px;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
 }
-.input-row:focus-within { border-color: rgba(255,255,255,0.14); }
+.input-row:focus-within {
+  border-color: rgba(var(--accent-rgb),0.3);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb),0.07), inset 0 1px 0 rgba(255,255,255,0.04);
+}
 .input-row input {
   flex: 1; background: none; border: none; outline: none;
   color: var(--text); font-family: var(--font-mono); font-size: 12px;
@@ -416,6 +493,28 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
 .action-btn.dim { color: #444; }
 .action-btn.dim:hover { color: #888; }
 
+/* Color scheme picker */
+.scheme-options {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px;
+}
+.scheme-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px; background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.09); border-radius: 8px;
+  color: #777; font-family: var(--font-mono); font-size: 10px;
+  cursor: none; transition: all 0.15s; letter-spacing: 0.04em;
+}
+.scheme-btn:hover { border-color: rgba(255,255,255,0.16); color: #bbb; }
+.scheme-btn.active {
+  border-color: var(--c);
+  background: rgba(255,255,255,0.05);
+  color: var(--c);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--c) 20%, transparent);
+}
+.scheme-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+
 /* ── PLACEHOLDER APPS ── */
 .placeholder-screen {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
@@ -430,11 +529,11 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
   position: fixed; bottom: 18px; left: 50%;
   z-index: 100;
   display: flex; align-items: center; gap: 4px;
-  background: rgba(8,8,11,0.85); backdrop-filter: blur(28px);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-top-color: rgba(255,255,255,0.1);
+  background: rgba(10,10,14,0.88); backdrop-filter: blur(28px);
+  border: 1px solid rgba(255,255,255,0.11);
+  border-top-color: rgba(255,255,255,0.17);
   border-radius: 18px; padding: 6px 8px;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03) inset, 0 1px 0 rgba(255,255,255,0.07) inset;
   opacity: 0; animation: taskbarIn 0.7s ease forwards 0.8s;
 }
 @keyframes taskbarIn {
@@ -447,20 +546,25 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
   width: 40px; height: 40px; border-radius: 12px;
   background: none; border: none; cursor: none;
   transition: all 0.15s; position: relative;
-  color: #555;
+  color: #666;
 }
-.taskbar-btn:hover { background: rgba(255,255,255,0.05); color: #aaa; }
-.taskbar-btn.active { background: rgba(255,255,255,0.07); color: var(--accent); }
+.taskbar-btn:hover { background: rgba(255,255,255,0.07); color: #bbb; }
+.taskbar-btn.active {
+  background: rgba(var(--accent-rgb),0.1);
+  color: var(--accent);
+  box-shadow: 0 0 14px rgba(var(--accent-rgb),0.12);
+}
 .taskbar-btn svg { width: 18px; height: 18px; }
 
 /* Active dot under taskbar icon */
 .taskbar-btn.active::after {
   content: ''; position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%);
   width: 4px; height: 4px; border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 6px rgba(var(--accent-rgb),0.7);
 }
 
 .taskbar-sep {
-  width: 1px; height: 24px; background: rgba(255,255,255,0.05); margin: 0 4px;
+  width: 1px; height: 24px; background: rgba(255,255,255,0.08); margin: 0 4px;
 }
 
 /* ── TOAST ── */
@@ -564,6 +668,7 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
 <!-- ══ BROWSER SCREEN ══ -->
 <div class="screen" id="screen-browser">
   <div class="browser-bar">
+    <span class="browser-app-label">oblivion <em>browser</em></span>
     <div class="browser-tabs" id="browserTabs"></div>
     <button class="browser-tab-new" id="newTabBtn" title="new tab">+</button>
   </div>
@@ -704,10 +809,34 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
     </div>
 
     <div class="settings-section">
+      <div class="settings-section-title">color scheme</div>
+      <div class="scheme-options" id="schemeOptions">
+        <button class="scheme-btn active" data-scheme="green" style="--c:#c8f0a0">
+          <span class="scheme-dot" style="background:#c8f0a0;box-shadow:0 0 8px rgba(200,240,160,0.6)"></span>green
+        </button>
+        <button class="scheme-btn" data-scheme="blue" style="--c:#93c5fd">
+          <span class="scheme-dot" style="background:#93c5fd;box-shadow:0 0 8px rgba(147,197,253,0.6)"></span>blue
+        </button>
+        <button class="scheme-btn" data-scheme="purple" style="--c:#c4b5fd">
+          <span class="scheme-dot" style="background:#c4b5fd;box-shadow:0 0 8px rgba(196,181,253,0.6)"></span>purple
+        </button>
+        <button class="scheme-btn" data-scheme="amber" style="--c:#fcd34d">
+          <span class="scheme-dot" style="background:#fcd34d;box-shadow:0 0 8px rgba(252,211,77,0.6)"></span>amber
+        </button>
+        <button class="scheme-btn" data-scheme="red" style="--c:#fca5a5">
+          <span class="scheme-dot" style="background:#fca5a5;box-shadow:0 0 8px rgba(252,165,165,0.6)"></span>red
+        </button>
+        <button class="scheme-btn" data-scheme="cyan" style="--c:#67e8f9">
+          <span class="scheme-dot" style="background:#67e8f9;box-shadow:0 0 8px rgba(103,232,249,0.6)"></span>cyan
+        </button>
+      </div>
+    </div>
+
+    <div class="settings-section">
       <div class="settings-section-title">about</div>
-      <div style="font-size:11px;color:#1e1e24;line-height:1.8;letter-spacing:0.04em;">
+      <div style="font-size:11px;color:#555;line-height:1.8;letter-spacing:0.04em;">
         oblivion — between here and nowhere<br>
-        <a href="https://discord.gg/gmb2RegMTd" target="_blank" style="color:#252528;text-decoration:none;">discord ↗</a>
+        <a href="https://discord.gg/gmb2RegMTd" target="_blank" style="color:#666;text-decoration:none;transition:color 0.15s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='#666'">discord ↗</a>
       </div>
     </div>
 
@@ -982,7 +1111,7 @@ function createTab(url = null) {
     iframe.allowFullscreen = true;
     frame.appendChild(iframe);
   } else {
-    frame.innerHTML = `<div class="newtab-page"><div class="wordmark" style="animation:none;opacity:1;font-size:2rem;">oblivion</div><div class="newtab-hint">enter a url or search above</div></div>`;
+    frame.innerHTML = `<div class="newtab-page"><div class="newtab-wordmark" id="newtab-wm-${id}">oblivion</div><div class="newtab-hint" id="newtab-hint-${id}">enter a url or search above</div></div>`;
   }
 
   const tab = { id, url, title: url ? new URL(url.startsWith('http') ? url : 'https://'+url).hostname : 'new tab', frame };
@@ -1058,6 +1187,37 @@ async function browserNavigate(url) {
 
 document.getElementById('browserGo').addEventListener('click', () => browserNavigate());
 document.getElementById('browserAddr').addEventListener('keydown', e => { if(e.key==='Enter') browserNavigate(); });
+
+// Hide/show newtab wordmark when typing in address bar
+document.getElementById('browserAddr').addEventListener('input', e => {
+  const tab = tabs.find(t => t.id === activeTabId);
+  if (!tab || tab.url) return; // only on new tab pages
+  const typing = e.target.value.length > 0;
+  const wm = document.getElementById(`newtab-wm-${activeTabId}`);
+  const hint = document.getElementById(`newtab-hint-${activeTabId}`);
+  if (wm) wm.classList.toggle('hidden', typing);
+  if (hint) hint.classList.toggle('hidden', typing);
+});
+document.getElementById('browserAddr').addEventListener('focus', e => {
+  const tab = tabs.find(t => t.id === activeTabId);
+  if (!tab || tab.url) return;
+  if (e.target.value.length > 0) {
+    const wm = document.getElementById(`newtab-wm-${activeTabId}`);
+    const hint = document.getElementById(`newtab-hint-${activeTabId}`);
+    if (wm) wm.classList.add('hidden');
+    if (hint) hint.classList.add('hidden');
+  }
+});
+document.getElementById('browserAddr').addEventListener('blur', e => {
+  const tab = tabs.find(t => t.id === activeTabId);
+  if (!tab || tab.url) return;
+  if (e.target.value.length === 0) {
+    const wm = document.getElementById(`newtab-wm-${activeTabId}`);
+    const hint = document.getElementById(`newtab-hint-${activeTabId}`);
+    if (wm) wm.classList.remove('hidden');
+    if (hint) hint.classList.remove('hidden');
+  }
+});
 document.getElementById('newTabBtn').addEventListener('click', () => { navigate('browser'); createTab(); });
 document.getElementById('navBack').addEventListener('click', () => { const f = tabs.find(t=>t.id===activeTabId)?.frame.querySelector('iframe'); if(f) try{f.contentWindow.history.back();}catch(e){} });
 document.getElementById('navForward').addEventListener('click', () => { const f = tabs.find(t=>t.id===activeTabId)?.frame.querySelector('iframe'); if(f) try{f.contentWindow.history.forward();}catch(e){} });
@@ -1239,6 +1399,19 @@ document.getElementById('applyCloak').addEventListener('click', () => {
   const btn = document.getElementById('applyCloak'); btn.textContent = 'applied ✓';
   setTimeout(() => btn.textContent = 'apply cloak', 1500);
 });
+// ── COLOR SCHEME ───────────────────────────────────────────────────────
+const savedScheme = localStorage.getItem('oblivionScheme') || 'green';
+function applyScheme(name) {
+  document.body.className = document.body.className.replace(/scheme-\w+/g, '').trim();
+  if (name !== 'green') document.body.classList.add('scheme-' + name);
+  localStorage.setItem('oblivionScheme', name);
+  document.querySelectorAll('.scheme-btn').forEach(b => b.classList.toggle('active', b.dataset.scheme === name));
+}
+applyScheme(savedScheme);
+document.querySelectorAll('.scheme-btn').forEach(btn => {
+  btn.addEventListener('click', () => applyScheme(btn.dataset.scheme));
+});
+
 document.getElementById('resetCloak').addEventListener('click', () => {
   document.title = 'oblivion'; setFavicon('/void-icon.svg');
   localStorage.removeItem('oblivionCloakTitle'); localStorage.removeItem('oblivionCloakIcon');

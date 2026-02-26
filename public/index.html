@@ -1804,24 +1804,9 @@ let musicQueue = [], musicQueueIdx = -1, currentTrack = null;
 let musicPlaying = false, musicShuffle = false, musicRepeatMode = false;
 let musicVol = 80, progressDragging = false;
 let progressTimer = null;
-let spotifyAccessToken = null, spotifyTokenExp = 0;
-
-async function getSpotifyToken() {
-  if (spotifyAccessToken && Date.now() < spotifyTokenExp) return spotifyAccessToken;
-  const res = await fetch('/api/spotify-token');
-  if (!res.ok) throw new Error('token fetch failed');
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  spotifyAccessToken = data.access_token;
-  spotifyTokenExp = Date.now() + 55 * 60 * 1000;
-  return spotifyAccessToken;
-}
 
 async function spotifyFetch(path) {
-  const token = await getSpotifyToken();
-  const res = await fetch('https://api.spotify.com/v1' + path, {
-    headers: { Authorization: 'Bearer ' + token }
-  });
+  const res = await fetch('/api/spotify' + path);
   if (!res.ok) throw new Error('spotify ' + res.status);
   return res.json();
 }

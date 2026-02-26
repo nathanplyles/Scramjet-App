@@ -56,49 +56,52 @@ fastify.register(fastifyStatic, {
 	decorateReply: false,
 });
 
-// ── Spotify token proxy ────────────────────────────────────────────────
-// Credentials live in Render env vars — never exposed to the client.
-// Token is cached server-side for its full lifetime (~1 hour).
+// ── Spotify proxy ─────────────────────────────────────────────────────
+// All Spotify API calls are routed through the server to avoid COEP
+// blocking external fetches in the browser. Credentials never leave
+// the server. Token is cached for its full lifetime (~1 hour).
 let cachedToken = null;
 let cachedTokenExp = 0;
 
-fastify.get("/api/spotify-token", async (request, reply) => {
+async function getSpotifyToken() {
 	const clientId = process.env.SPOTIFY_CLIENT_ID;
 	const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+	if (!clientId || !clientSecret) throw new Error("missing credentials");
+	if (cachedToken && Date.now() < cachedTokenExp) return cachedToken;
 
-	if (!clientId || !clientSecret) {
-		return reply.code(503).send({ error: "Spotify credentials not configured on server." });
+	const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+	const res = await fetch("https://accounts.spotify.com/api/token", {
+		method: "POST",
+		headers: {
+			Authorization: `Basic ${credentials}`,
+			"Content-Type": "application/x-www-form-urlencoded",
+		},
+		body: "grant_type=client_credentials",
+	});
+	if (!res.ok) throw new Error("spotify auth failed: " + await res.text());
+	const data = await res.json();
+	cachedToken = data.access_token;
+	cachedTokenExp = Date.now() + (data.expires_in - 60) * 1000;
+	return cachedToken;
+}
+
+fastify.get("/api/spotify/*", async (request, reply) => {
+	if (!process.env.SPOTIFY_CLIENT_ID) {
+		return reply.code(503).send({ error: "Spotify not configured." });
 	}
-
-	if (cachedToken && Date.now() < cachedTokenExp) {
-		return reply.send({ access_token: cachedToken });
-	}
-
 	try {
-		const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-		const res = await fetch("https://accounts.spotify.com/api/token", {
-			method: "POST",
-			headers: {
-				Authorization: `Basic ${credentials}`,
-				"Content-Type": "application/x-www-form-urlencoded",
-			},
-			body: "grant_type=client_credentials",
+		const token = await getSpotifyToken();
+		const path = request.params["*"];
+		const qs = new URLSearchParams(request.query).toString();
+		const url = `https://api.spotify.com/v1/${path}${qs ? "?" + qs : ""}`;
+		const res = await fetch(url, {
+			headers: { Authorization: `Bearer ${token}` },
 		});
-
-		if (!res.ok) {
-			const text = await res.text();
-			console.error("Spotify auth failed:", text);
-			return reply.code(502).send({ error: "Spotify authentication failed." });
-		}
-
 		const data = await res.json();
-		cachedToken = data.access_token;
-		cachedTokenExp = Date.now() + (data.expires_in - 60) * 1000;
-
-		return reply.send({ access_token: cachedToken });
+		reply.code(res.status).send(data);
 	} catch (err) {
-		console.error("Spotify token error:", err);
-		return reply.code(500).send({ error: "Internal server error." });
+		console.error("Spotify proxy error:", err.message);
+		reply.code(502).send({ error: err.message });
 	}
 });
 // ──────────────────────────────────────────────────────────────────────

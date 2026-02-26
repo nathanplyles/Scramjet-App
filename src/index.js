@@ -53,58 +53,26 @@ fastify.register(fastifyStatic, {
 	decorateReply: false,
 });
 
-// ── Spotify ────────────────────────────────────────────────────────────
-let cachedToken = null;
-let cachedTokenExp = 0;
-
-async function getSpotifyToken() {
-	const clientId = process.env.SPOTIFY_CLIENT_ID;
-	const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-	if (!clientId || !clientSecret) throw new Error("Spotify credentials not set.");
-	if (cachedToken && Date.now() < cachedTokenExp) return cachedToken;
-
-	const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-	const res = await fetch("https://accounts.spotify.com/api/token", {
-		method: "POST",
-		headers: {
-			Authorization: `Basic ${credentials}`,
-			"Content-Type": "application/x-www-form-urlencoded",
-		},
-		body: "grant_type=client_credentials",
-	});
-	if (!res.ok) {
-		const t = await res.text();
-		throw new Error(`Spotify auth failed (${res.status}): ${t}`);
-	}
-	const data = await res.json();
-	cachedToken = data.access_token;
-	cachedTokenExp = Date.now() + (data.expires_in - 60) * 1000;
-	return cachedToken;
-}
-
-// Proxy all Spotify API calls — keeps credentials server-side, bypasses COEP
-fastify.get("/api/spotify/*", async (request, reply) => {
-	if (!process.env.SPOTIFY_CLIENT_ID) {
-		return reply.code(503).send({ error: "Spotify not configured on server." });
-	}
+// ── Last.fm proxy ─────────────────────────────────────────────────────
+// Routes /api/lastfm?<qs> → https://ws.audioscrobbler.com/2.0/?<qs>&api_key=<key>
+// Key stays on server, never exposed to browser.
+fastify.get("/api/lastfm", async (request, reply) => {
+	const key = process.env.LASTFM_API_KEY;
+	if (!key) return reply.code(503).send({ error: "Last.fm not configured." });
 	try {
-		const token = await getSpotifyToken();
-		const spotifyPath = request.raw.url.slice("/api/spotify/".length);
-		const url = "https://api.spotify.com/v1/" + spotifyPath;
-		console.log("[spotify] raw:", JSON.stringify(request.raw.url));
-		console.log("[spotify] path:", JSON.stringify(spotifyPath));
-		console.log("[spotify] url:", JSON.stringify(url));
-		const res = await fetch(url, {
-			headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-		});
+		const qs = request.raw.url.slice("/api/lastfm?".length);
+		const url = "https://ws.audioscrobbler.com/2.0/?" + qs + "&api_key=" + key + "&format=json";
+		const res = await fetch(url);
 		const text = await res.text();
-		if (!res.ok) console.error("[spotify] error", res.status, text.slice(0, 300));
 		reply.code(res.status).header("content-type", "application/json").send(text);
 	} catch (err) {
-		console.error("[spotify] crash:", err.message);
 		reply.code(502).send(JSON.stringify({ error: err.message }));
 	}
 });
+
+// ── Image proxy ──────────────────────────────────────────────────────
+
+
 
 // Proxy Spotify CDN images — bypasses COEP for album art
 fastify.get("/api/img/*", async (request, reply) => {

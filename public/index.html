@@ -1073,6 +1073,8 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
       <div class="scheme-options" id="schemeOptions"></div>
     </div>
 
+
+
     <div class="settings-section">
       <div class="settings-section-title">about</div>
       <div style="font-size:11px;color:#555;line-height:1.8;letter-spacing:0.04em;">
@@ -1755,23 +1757,74 @@ let musicQueue = [], musicQueueIdx = -1, currentTrack = null;
 let musicPlaying = false, musicShuffleOn = false, musicRepeatOn = false;
 let musicVol = 80, progressDragging = false, progressTimer = null;
 
-async function spotifyFetch(path) {
-  const res = await fetch('/api/spotify' + path);
-  if (!res.ok) throw new Error('spotify ' + res.status);
+// ── API helpers ──────────────────────────────────────────────────────
+async function lastfmFetch(params) {
+  const qs = Object.entries(params).map(([k,v]) => k + '=' + encodeURIComponent(v)).join('&');
+  const res = await fetch('/api/lastfm?' + qs);
+  if (!res.ok) throw new Error('lastfm ' + res.status);
   return res.json();
 }
 
-async function musicInit() {
-  document.getElementById('musicApp').classList.add('ready');
-  loadFeatured();
+async function searchTracks(q) {
+  const data = await lastfmFetch({ method: 'track.search', track: q, limit: 20 });
+  const tracks = data.results?.trackmatches?.track || [];
+  if (!Array.isArray(tracks)) return [];
+  return tracks.map(t => ({
+    id: t.mbid || (t.artist + '||' + t.name),
+    name: t.name,
+    artist: t.artist,
+    duration_ms: parseInt(t.duration || 0) * 1000,
+    image: getLfmImage(t.image),
+    _source: 'lastfm'
+  }));
+}
+
+function getLfmImage(imgs) {
+  if (!imgs) return '';
+  const sizes = ['extralarge','large','medium','small'];
+  for (const s of sizes) {
+    const found = imgs.find(i => i.size === s);
+    if (found && found['#text']) return found['#text'];
+  }
+  return '';
+}
+
+async function getItunesArt(artist, track) {
+  try {
+    const q = encodeURIComponent(artist + ' ' + track);
+    const res = await fetch('https://itunes.apple.com/search?term=' + q + '&media=music&limit=5');
+    if (!res.ok) return null;
+    const data = await res.json();
+    const match = data.results?.[0];
+    if (!match) return null;
+    // iTunes gives 100x100, replace with 600x600
+    return (match.artworkUrl100 || '').replace('100x100', '600x600');
+  } catch(e) { return null; }
+}
+
+async function enrichWithItunesArt(tracks) {
+  // Fetch iTunes art for all tracks in parallel, prefer it over Last.fm art
+  return Promise.all(tracks.map(async t => {
+    const itunesArt = await getItunesArt(t.artist, t.name);
+    return { ...t, image: itunesArt || t.image };
+  }));
 }
 
 async function loadFeatured() {
   try {
-    const data = await spotifyFetch('/search?q=year%3A2024&type=track&limit=20&market=US');
-    const tracks = data.tracks?.items || [];
-    document.getElementById('musicRightTitle').textContent = 'popular';
-    renderTrackList(document.getElementById('musicRightList'), tracks, false);
+    const data = await lastfmFetch({ method: 'chart.gettoptracks', limit: 20 });
+    const raw = data.tracks?.track || [];
+    const tracks = raw.map(t => ({
+      id: t.mbid || (t.artist?.name + '||' + t.name),
+      name: t.name,
+      artist: t.artist?.name || '',
+      duration_ms: parseInt(t.duration || 0) * 1000,
+      image: getLfmImage(t.image),
+      _source: 'lastfm'
+    }));
+    document.getElementById('musicRightTitle').textContent = 'top tracks';
+    const enriched = await enrichWithItunesArt(tracks);
+    renderTrackList(document.getElementById('musicRightList'), enriched, false);
   } catch(e) {
     document.getElementById('musicRightList').innerHTML = '<div class="music-results-empty">search to get started</div>';
   }
@@ -1786,13 +1839,16 @@ document.getElementById('musicSearch').addEventListener('input', e => {
   el.innerHTML = '<div class="music-results-empty">searching...</div>';
   searchTimer = setTimeout(async () => {
     try {
-      const data = await spotifyFetch('/search?q=' + encodeURIComponent(q) + '&type=track&limit=20&market=US');
-      const tracks = data.tracks?.items || [];
-      el.innerHTML = '';
+      const tracks = await searchTracks(q);
       if (!tracks.length) { el.innerHTML = '<div class="music-results-empty">no results</div>'; return; }
-      renderTrackList(el, tracks, true);
-    } catch(e) { el.innerHTML = '<div class="music-results-empty">search failed</div>'; }
-  }, 320);
+      el.innerHTML = '<div class="music-results-empty">loading art...</div>';
+      const enriched = await enrichWithItunesArt(tracks);
+      el.innerHTML = '';
+      renderTrackList(el, enriched, true);
+    } catch(e) {
+      el.innerHTML = '<div class="music-results-empty">search failed — check last.fm key in settings</div>';
+    }
+  }, 350);
 });
 
 function renderTrackList(container, tracks, showAdd) {
@@ -1804,17 +1860,18 @@ function makeRow(track, showAdd) {
   const el = document.createElement('div');
   el.className = 'music-result-row' + (currentTrack?.id === track.id ? ' playing' : '');
   el.dataset.id = track.id;
-  const _rawThumb = track.album?.images?.[2]?.url || track.album?.images?.[0]?.url || '';
-  const thumb = _rawThumb ? '/api/img/' + _rawThumb.replace('https://', '') : '';
-  const artist = track.artists?.map(a => a.name).join(', ') || '';
-  const dur = fmtTime(Math.floor((track.duration_ms || 0) / 1000));
+  const thumb = track.image || '';
+  const artist = track.artist || '';
+  const dur = track.duration_ms ? fmtTime(Math.floor(track.duration_ms / 1000)) : '';
   el.innerHTML =
-    '<img class="music-result-thumb" src="' + esc(thumb) + '" loading="lazy" alt="">' +
+    (thumb
+      ? '<img class="music-result-thumb" src="' + esc(thumb) + '" loading="lazy" alt="" onerror="this.style.opacity=0.2">'
+      : '<div class="music-result-thumb" style="background:var(--surface2);border-radius:5px;"></div>') +
     '<div class="music-result-info">' +
       '<div class="music-result-name">' + esc(track.name) + '</div>' +
       '<div class="music-result-sub">' + esc(artist) + '</div>' +
     '</div>' +
-    '<span class="music-result-dur">' + dur + '</span>' +
+    (dur ? '<span class="music-result-dur">' + dur + '</span>' : '') +
     (showAdd ? '<button class="music-result-add" title="add to queue">+</button>' : '');
   el.addEventListener('click', e => {
     if (e.target.classList.contains('music-result-add')) return;
@@ -1843,16 +1900,15 @@ function renderQueue() {
 
 async function playTrack(track) {
   currentTrack = track;
-  const art = track.album?.images?.[0]?.url || '';
-  const artist = track.artists?.map(a => a.name).join(', ') || '';
+  const art = track.image || '';
+  const artist = track.artist || '';
   document.getElementById('musicTrackTitle').textContent = track.name;
   document.getElementById('musicTrackArtist').textContent = artist;
   const artEl = document.getElementById('musicArt');
   const bgEl = document.getElementById('musicArtBg');
   if (art) {
-    const artProxied = art ? '/api/img/' + art.replace('https://', '') : art;
-    artEl.src = artProxied; artEl.classList.add('on');
-    bgEl.style.backgroundImage = 'url(' + artProxied + ')'; bgEl.classList.add('on');
+    artEl.src = art; artEl.classList.add('on');
+    bgEl.style.backgroundImage = 'url(' + art + ')'; bgEl.classList.add('on');
     document.getElementById('musicArtPlaceholder').classList.add('hidden');
   }
   document.querySelectorAll('.music-result-row').forEach(r => r.classList.toggle('playing', r.dataset.id === track.id));
@@ -1924,9 +1980,9 @@ function makeDraggable(barId, fillId, thumbId, onVal) {
   const bar = document.getElementById(barId), fill = document.getElementById(fillId), thumb = document.getElementById(thumbId);
   let down = false;
   const calc = e => { const r = bar.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); };
-  bar.addEventListener('mousedown', e => { down = true; const v = calc(e); fill.style.width = (v*100)+'%'; if(thumb) thumb.style.left=(v*100)+'%'; onVal(v, true); });
-  window.addEventListener('mousemove', e => { if(!down) return; const v=calc(e); fill.style.width=(v*100)+'%'; if(thumb) thumb.style.left=(v*100)+'%'; onVal(v, true); });
-  window.addEventListener('mouseup', e => { if(!down) return; down=false; const v=calc(e); fill.style.width=(v*100)+'%'; if(thumb) thumb.style.left=(v*100)+'%'; onVal(v, false); });
+  bar.addEventListener('mousedown', e => { down = true; const v = calc(e); fill.style.width=(v*100)+'%'; if(thumb) thumb.style.left=(v*100)+'%'; onVal(v,true); });
+  window.addEventListener('mousemove', e => { if(!down) return; const v=calc(e); fill.style.width=(v*100)+'%'; if(thumb) thumb.style.left=(v*100)+'%'; onVal(v,true); });
+  window.addEventListener('mouseup', e => { if(!down) return; down=false; const v=calc(e); fill.style.width=(v*100)+'%'; if(thumb) thumb.style.left=(v*100)+'%'; onVal(v,false); });
 }
 makeDraggable('musicProgressBar','musicProgressFill','musicProgressThumb',(v,drag)=>{ progressDragging=drag; if(!drag&&ytReady&&ytPlayer) ytPlayer.seekTo(v*(ytPlayer.getDuration()||0)); });
 makeDraggable('musicVolumeBar','musicVolumeFill','musicVolumeThumb',(v)=>{ musicVol=Math.round(v*100); if(ytReady&&ytPlayer) ytPlayer.setVolume(musicVol); });
@@ -1943,14 +1999,26 @@ document.querySelectorAll('.music-tab').forEach(btn => {
     btn.classList.add('active'); document.getElementById('mtab-'+btn.dataset.mtab).classList.add('active');
   });
 });
+
 function fmtTime(s){ return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+
+
 let musicInited = false;
 document.querySelectorAll('.taskbar-btn[data-screen="music"],.app-icon[data-screen="music"]').forEach(el => {
-  el.addEventListener('click', () => { if(!musicInited){musicInited=true; musicInit();} }, true);
+  el.addEventListener('click', () => {
+    if (!musicInited) {
+      musicInited = true;
+      musicInit();
+    }
+  }, true);
 });
 
+async function musicInit() {
+  document.getElementById('musicApp').classList.add('ready');
+  loadFeatured();
+}
 </script>
 </body>
 </html>

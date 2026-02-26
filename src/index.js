@@ -18,12 +18,16 @@ Object.assign(wisp.options, {
 	dns_servers: ["1.1.1.3", "1.0.0.3"],
 });
 
+let rawNodeReq = null;
+
 const fastify = Fastify({
 	serverFactory: (handler) => {
 		return createServer()
 			.on("request", (req, res) => {
 				res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
 				res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+				// Stash raw node req so the Spotify proxy can read the unmodified URL
+				rawNodeReq = req;
 				handler(req, res);
 			})
 			.on("upgrade", (req, socket, head) => {
@@ -56,17 +60,17 @@ fastify.register(fastifyStatic, {
 	decorateReply: false,
 });
 
-// ── Spotify proxy ─────────────────────────────────────────────────────
-// All Spotify API calls are routed through the server to avoid COEP
-// blocking external fetches in the browser. Credentials never leave
-// the server. Token is cached for its full lifetime (~1 hour).
+// ── Spotify proxy ──────────────────────────────────────────────────────
+// Routes /api/spotify/<path>?<qs> → https://api.spotify.com/v1/<path>?<qs>
+// Uses the raw Node.js URL so Fastify never touches the query string.
+// Credentials stay on the server; token is cached for ~1 hour.
 let cachedToken = null;
 let cachedTokenExp = 0;
 
 async function getSpotifyToken() {
 	const clientId = process.env.SPOTIFY_CLIENT_ID;
 	const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-	if (!clientId || !clientSecret) throw new Error("missing credentials");
+	if (!clientId || !clientSecret) throw new Error("Spotify credentials not set in environment.");
 	if (cachedToken && Date.now() < cachedTokenExp) return cachedToken;
 
 	const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
@@ -78,7 +82,7 @@ async function getSpotifyToken() {
 		},
 		body: "grant_type=client_credentials",
 	});
-	if (!res.ok) throw new Error("spotify auth failed: " + await res.text());
+	if (!res.ok) throw new Error("Spotify auth failed: " + (await res.text()));
 	const data = await res.json();
 	cachedToken = data.access_token;
 	cachedTokenExp = Date.now() + (data.expires_in - 60) * 1000;
@@ -87,20 +91,19 @@ async function getSpotifyToken() {
 
 fastify.get("/api/spotify/*", async (request, reply) => {
 	if (!process.env.SPOTIFY_CLIENT_ID) {
-		return reply.code(503).send({ error: "Spotify not configured." });
+		return reply.code(503).send({ error: "Spotify not configured on server." });
 	}
 	try {
 		const token = await getSpotifyToken();
-		const path = request.params["*"];
-		// Rebuild full URL preserving the original query string exactly
-		const rawUrl = request.url; // e.g. /api/spotify/search?q=hello&type=track
-		const afterPrefix = rawUrl.slice("/api/spotify/".length); // search?q=hello&type=track
-		const url = "https://api.spotify.com/v1/" + afterPrefix;
+		// Use raw node URL to preserve query string exactly as the browser sent it
+		const rawUrl = request.raw.url; // e.g. /api/spotify/search?q=hello&type=track&limit=30
+		const spotifyPath = rawUrl.slice("/api/spotify/".length); // search?q=hello&type=track&limit=30
+		const url = "https://api.spotify.com/v1/" + spotifyPath;
 		const res = await fetch(url, {
 			headers: { Authorization: `Bearer ${token}` },
 		});
-		const data = await res.json();
-		reply.code(res.status).send(data);
+		const body = await res.json();
+		reply.code(res.status).send(body);
 	} catch (err) {
 		console.error("Spotify proxy error:", err.message);
 		reply.code(502).send({ error: err.message });
@@ -108,7 +111,7 @@ fastify.get("/api/spotify/*", async (request, reply) => {
 });
 // ──────────────────────────────────────────────────────────────────────
 
-fastify.setNotFoundHandler((res, reply) => {
+fastify.setNotFoundHandler((req, reply) => {
 	return reply.code(404).type("text/html").sendFile("404.html");
 });
 

@@ -1768,7 +1768,7 @@ async function musicInit() {
 
 async function loadFeatured() {
   try {
-    const data = await spotifyFetch('/search?q=year%3A2024&type=track&limit=24&market=US');
+    const data = await spotifyFetch('/search?q=year%3A2024&type=track&limit=20&market=US');
     const tracks = data.tracks?.items || [];
     document.getElementById('musicRightTitle').textContent = 'popular';
     renderTrackList(document.getElementById('musicRightList'), tracks, false);
@@ -1786,7 +1786,7 @@ document.getElementById('musicSearch').addEventListener('input', e => {
   el.innerHTML = '<div class="music-results-empty">searching...</div>';
   searchTimer = setTimeout(async () => {
     try {
-      const data = await spotifyFetch('/search?q=' + encodeURIComponent(q) + '&type=track&limit=30&market=US');
+      const data = await spotifyFetch('/search?q=' + encodeURIComponent(q) + '&type=track&limit=20&market=US');
       const tracks = data.tracks?.items || [];
       el.innerHTML = '';
       if (!tracks.length) { el.innerHTML = '<div class="music-results-empty">no results</div>'; return; }

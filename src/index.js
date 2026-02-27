@@ -58,7 +58,11 @@ fastify.get("/api/itunes", async (request, reply) => {
 	try {
 		const qs = request.raw.url.slice("/api/itunes?".length);
 		const res = await fetch("https://itunes.apple.com/search?" + qs, {
-			headers: { "User-Agent": "Mozilla/5.0" }
+			headers: {
+				"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+				"Accept": "application/json",
+				"Accept-Language": "en-US,en;q=0.9",
+			}
 		});
 		const text = await res.text();
 		reply.code(res.status).header("content-type", "application/json").send(text);
@@ -93,24 +97,37 @@ fastify.get("/api/ytSearch", async (request, reply) => {
 
 async function getYouTubeAudioUrl(videoId) {
 	// Try multiple innertube clients — TV client is most reliable for audio
+	// WEB_EMBEDDED client gives browser-playable URLs (no c=ANDROID that gets 403'd)
 	const clients = [
 		{
-			clientName: "TVHTML5",
-			clientVersion: "7.20240101.09.00",
+			clientName: "WEB_EMBEDDED_PLAYER",
+			clientVersion: "2.20240101.09.00",
+			clientNameNum: "56",
+			userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+			extraHeaders: {
+				"Origin": "https://www.youtube.com",
+				"Referer": "https://www.youtube.com/embed/" + videoId,
+			},
+		},
+		{
+			clientName: "WEB",
+			clientVersion: "2.20240101.09.00",
+			clientNameNum: "1",
+			userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+			extraHeaders: {
+				"Origin": "https://www.youtube.com",
+				"Referer": "https://www.youtube.com/watch?v=" + videoId,
+			},
+		},
+		{
+			clientName: "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
+			clientVersion: "2.0",
+			clientNameNum: "85",
 			userAgent: "Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/6.0 TV Safari/538.1",
-			clientNameNum: "7",
-		},
-		{
-			clientName: "IOS",
-			clientVersion: "19.29.1",
-			userAgent: "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)",
-			clientNameNum: "5",
-		},
-		{
-			clientName: "ANDROID",
-			clientVersion: "19.30.36",
-			userAgent: "com.google.android.youtube/19.30.36 (Linux; U; Android 11) gzip",
-			clientNameNum: "3",
+			extraHeaders: {
+				"Origin": "https://www.youtube.com",
+				"Referer": "https://www.youtube.com/",
+			},
 		},
 	];
 
@@ -134,8 +151,7 @@ async function getYouTubeAudioUrl(videoId) {
 					"User-Agent": client.userAgent,
 					"X-YouTube-Client-Name": client.clientNameNum,
 					"X-YouTube-Client-Version": client.clientVersion,
-					"Origin": "https://www.youtube.com",
-					"Referer": "https://www.youtube.com/",
+					...client.extraHeaders,
 				},
 				body: JSON.stringify(body),
 				signal: AbortSignal.timeout(10000),
@@ -156,8 +172,6 @@ async function getYouTubeAudioUrl(videoId) {
 				console.log(`[yt] got audio via ${client.clientName}, bitrate: ${audioFormats[0].bitrate}`);
 				return audioFormats[0].url;
 			}
-
-			// Some clients return signatureCipher instead of url — skip for now
 			console.log(`[yt] ${client.clientName} no direct URL`);
 		} catch (e) {
 			console.log(`[yt] ${client.clientName} error: ${e.message}`);
@@ -182,14 +196,42 @@ fastify.get("/api/ytAudio/:videoId", async (request, reply) => {
 	}
 });
 
-// Redirect browser directly to googlevideo URL — URL is IP-signed to the
-// client so browser must fetch directly (proxying causes 403)
+// Proxy audio bytes from googlevideo — must use exact same headers YouTube expects
 fastify.get("/api/ytProxy", async (request, reply) => {
 	const url = request.query.url;
 	if (!url || !url.includes("googlevideo.com")) {
 		return reply.code(400).send("invalid url");
 	}
-	reply.redirect(url);
+	try {
+		const fetchHeaders = {
+			"User-Agent": "com.google.android.youtube/19.30.36 (Linux; U; Android 11) gzip",
+			"Origin": "https://www.youtube.com",
+			"Referer": "https://www.youtube.com/",
+		};
+		if (request.headers["range"]) {
+			fetchHeaders["Range"] = request.headers["range"];
+		}
+		const upstream = await fetch(url, {
+			headers: fetchHeaders,
+			signal: AbortSignal.timeout(30000),
+		});
+		const ct = upstream.headers.get("content-type") || "audio/mp4";
+		const cl = upstream.headers.get("content-length");
+		const cr = upstream.headers.get("content-range");
+		reply
+			.code(upstream.status)
+			.header("content-type", ct)
+			.header("accept-ranges", "bytes")
+			.header("access-control-allow-origin", "*")
+			.header("cross-origin-resource-policy", "cross-origin");
+		if (cl) reply.header("content-length", cl);
+		if (cr) reply.header("content-range", cr);
+		// Stream directly without buffering entire file
+		reply.send(Buffer.from(await upstream.arrayBuffer()));
+	} catch (err) {
+		console.error("[ytProxy]", err.message);
+		reply.code(502).send();
+	}
 });
 
 // ── Image proxy ────────────────────────────────────────────────────────

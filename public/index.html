@@ -1884,8 +1884,7 @@ async function getAudioSrc(videoId) {
   if (!res.ok) throw new Error('audio fetch failed ' + res.status);
   const data = await res.json();
   if (!data.url) throw new Error('no url returned');
-  // URL is IP-signed to the client — browser fetches directly, no proxy needed
-  return data.url;
+  return '/api/ytProxy?url=' + encodeURIComponent(data.url);
 }
 
 // ── Recently played ───────────────────────────────────────────────────

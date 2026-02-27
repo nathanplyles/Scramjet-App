@@ -66,23 +66,40 @@ fastify.get("/api/itunes", async (request, reply) => {
 	}
 });
 
-// ── YouTube helpers (zero dependencies) ───────────────────────────────
-const YT_HEADERS = {
-	"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-	"Accept-Language": "en-US,en;q=0.9",
-	"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+// ── YouTube helpers (zero dependencies, uses innertube API) ───────────
+// Uses YouTube's internal /youtubei/v1/player endpoint — much more
+// reliable than scraping the watch page HTML.
+
+const INNERTUBE_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8";
+const INNERTUBE_CONTEXT = {
+	client: {
+		clientName: "ANDROID",
+		clientVersion: "18.11.34",
+		androidSdkVersion: 30,
+		hl: "en",
+		gl: "US",
+		utcOffsetMinutes: 0,
+	},
 };
 
-function extractPlayerData(html) {
-	const patterns = [
-		/var ytInitialPlayerResponse\s*=\s*(\{.+?\});(?:\s*(?:var|const|let)\s|\s*if\s*\()/s,
-		/ytInitialPlayerResponse\s*=\s*(\{[\s\S]+?\});\s*(?:var |const |let |window\.)/,
-	];
-	for (const p of patterns) {
-		const m = html.match(p);
-		if (m) { try { return JSON.parse(m[1]); } catch {} }
-	}
-	return null;
+async function getStreamingData(videoId) {
+	const url = `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_KEY}&prettyPrint=false`;
+	const body = JSON.stringify({
+		context: INNERTUBE_CONTEXT,
+		videoId,
+		params: "2AMBCgIQBg==",
+	});
+	const res = await fetch(url, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"User-Agent": "com.google.android.youtube/18.11.34 (Linux; U; Android 11) gzip",
+			"X-Goog-Api-Format-Version": "2",
+		},
+		body,
+	});
+	if (!res.ok) throw new Error("innertube " + res.status);
+	return res.json();
 }
 
 function pickAudioFormat(streamingData) {
@@ -91,7 +108,10 @@ function pickAudioFormat(streamingData) {
 		...(streamingData.formats || []),
 	].filter(f => f.mimeType?.startsWith("audio/") && f.url);
 	formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-	return formats.find(f => f.mimeType.includes("opus")) || formats[0] || null;
+	// prefer mp4a (aac) — best browser compat, then opus/webm
+	return formats.find(f => f.mimeType.includes("mp4a")) ||
+		   formats.find(f => f.mimeType.includes("opus")) ||
+		   formats[0] || null;
 }
 
 // ── YouTube search ─────────────────────────────────────────────────────
@@ -99,7 +119,12 @@ fastify.get("/api/ytSearch", async (request, reply) => {
 	try {
 		const q = request.query.q || "";
 		const url = "https://www.youtube.com/results?search_query=" + encodeURIComponent(q);
-		const res = await fetch(url, { headers: YT_HEADERS });
+		const res = await fetch(url, {
+			headers: {
+				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+				"Accept-Language": "en-US,en;q=0.9",
+			},
+		});
 		const text = await res.text();
 		const match = text.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
 		if (match) {
@@ -113,35 +138,57 @@ fastify.get("/api/ytSearch", async (request, reply) => {
 	}
 });
 
-// ── YouTube audio proxy (no ytdl-core, works on Node 18+) ─────────────
+// ── YouTube audio proxy ────────────────────────────────────────────────
+// Gets audio URL via innertube, then fully buffers + re-serves it.
+// Buffering avoids issues with YouTube CDN stream piping under Node 18.
 fastify.get("/api/ytAudio/:videoId", async (request, reply) => {
 	const { videoId } = request.params;
 	if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
 		return reply.code(400).send({ error: "invalid videoId" });
 	}
 	try {
-		const pageRes = await fetch("https://www.youtube.com/watch?v=" + videoId, { headers: YT_HEADERS });
-		const html = await pageRes.text();
-		const playerData = extractPlayerData(html);
-		if (!playerData?.streamingData) {
-			console.error("[ytAudio] no player/streaming data for", videoId);
-			return reply.code(502).send({ error: "could not extract streaming data" });
+		const data = await getStreamingData(videoId);
+		console.log("[ytAudio] playability:", data.playabilityStatus?.status, data.playabilityStatus?.reason || "");
+
+		if (data.playabilityStatus?.status !== "OK") {
+			const reason = data.playabilityStatus?.reason || "not playable";
+			return reply.code(403).send({ error: reason });
 		}
-		const format = pickAudioFormat(playerData.streamingData);
+
+		const sd = data.streamingData || {};
+		console.log("[ytAudio] adaptive formats:", (sd.adaptiveFormats || []).length, "regular:", (sd.formats || []).length);
+
+		const format = pickAudioFormat(sd);
 		if (!format) {
 			console.error("[ytAudio] no audio format for", videoId);
+			// Log what we got for debugging
+			const allFormats = [...(sd.adaptiveFormats||[]), ...(sd.formats||[])];
+			console.error("[ytAudio] available mimeTypes:", allFormats.map(f => f.mimeType).join(", "));
 			return reply.code(502).send({ error: "no audio format found" });
 		}
-		console.log("[ytAudio] streaming", videoId, format.mimeType, (format.bitrate || 0) + "bps");
+
+		console.log("[ytAudio] format chosen:", format.mimeType, format.bitrate, "url length:", format.url?.length);
+
+		// Fetch with Android UA — required for the URL to be valid
 		const audioRes = await fetch(format.url, {
 			headers: {
-				"User-Agent": YT_HEADERS["User-Agent"],
+				"User-Agent": "com.google.android.youtube/18.11.34 (Linux; U; Android 11) gzip",
 				"Referer": "https://www.youtube.com/",
 				...(request.headers.range ? { "Range": request.headers.range } : {}),
 			},
 		});
+
+		console.log("[ytAudio] CDN response status:", audioRes.status, "content-type:", audioRes.headers.get("content-type"));
+
+		if (!audioRes.ok && audioRes.status !== 206) {
+			const body = await audioRes.text();
+			console.error("[ytAudio] CDN error body:", body.slice(0, 200));
+			return reply.code(502).send({ error: "CDN returned " + audioRes.status });
+		}
+
+		const ct = audioRes.headers.get("content-type") || format.mimeType || "audio/mp4";
 		reply.code(audioRes.status);
-		reply.header("content-type", audioRes.headers.get("content-type") || format.mimeType || "audio/webm");
+		reply.header("content-type", ct);
 		reply.header("accept-ranges", "bytes");
 		reply.header("cache-control", "no-cache");
 		reply.header("cross-origin-resource-policy", "same-origin");
@@ -151,7 +198,7 @@ fastify.get("/api/ytAudio/:videoId", async (request, reply) => {
 		if (cr) reply.header("content-range", cr);
 		reply.send(audioRes.body);
 	} catch (err) {
-		console.error("[ytAudio] error for", videoId, err.message);
+		console.error("[ytAudio] error for", videoId, ":", err.message, err.stack);
 		reply.code(502).send({ error: err.message });
 	}
 });

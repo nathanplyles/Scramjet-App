@@ -70,14 +70,33 @@ fastify.get("/api/itunes", async (request, reply) => {
 fastify.get("/api/ytSearch", async (request, reply) => {
 	try {
 		const q = request.query.q || "";
+		// Try YouTube search page first
 		const url = "https://www.youtube.com/results?search_query=" + encodeURIComponent(q);
 		const res = await fetch(url, {
-			headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" }
+			headers: {
+				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+				"Accept-Language": "en-US,en;q=0.9",
+				"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+			}
 		});
 		const text = await res.text();
-		const match = text.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
-		reply.send({ videoId: match ? match[1] : null });
+		// Try multiple patterns YouTube uses
+		const patterns = [
+			/"videoId":"([a-zA-Z0-9_-]{11})"/,
+			/"videoId":"([a-zA-Z0-9_-]{11})"/,
+			/watch\?v=([a-zA-Z0-9_-]{11})/,
+		];
+		for (const pattern of patterns) {
+			const match = text.match(pattern);
+			if (match) {
+				console.log("[ytSearch] found:", match[1], "for:", q);
+				return reply.send({ videoId: match[1] });
+			}
+		}
+		console.log("[ytSearch] no video found for:", q, "status:", res.status, "body length:", text.length);
+		reply.send({ videoId: null });
 	} catch (err) {
+		console.error("[ytSearch] error:", err.message);
 		reply.code(502).send({ videoId: null });
 	}
 });

@@ -38,56 +38,61 @@ fastify.register(fastifyStatic, { root: scramjetPath, prefix: "/scram/", decorat
 fastify.register(fastifyStatic, { root: libcurlPath, prefix: "/libcurl/", decorateReply: false });
 fastify.register(fastifyStatic, { root: baremuxPath, prefix: "/baremux/", decorateReply: false });
 
-// ── Piped API proxy (YouTube audio, full songs, no auth) ───────────────
-// Piped is an open-source YouTube frontend. Public instances return full
-// audio stream URLs via their /search and /streams endpoints.
-// Tries primary instance, falls back to alternates if it fails.
-const PIPED_INSTANCES = [
-	"https://pipedapi.kavin.rocks",
-	"https://api.piped.projectsegfau.lt",
-	"https://piped-api.garudalinux.org",
+// ── Invidious API proxy (YouTube audio, full songs, no auth) ──────────
+// Invidious is an open-source YouTube frontend with a stable public API.
+// /api/v1/search returns video metadata, /api/v1/videos/:id returns streams.
+const INVIDIOUS_INSTANCES = [
+	"https://invidious.snopyta.org",
+	"https://invidious.tiekoetter.com",
+	"https://inv.nadeko.net",
+	"https://invidious.nerdvpn.de",
+	"https://invidious.privacydev.net",
 ];
 
-async function pipedFetch(path) {
+async function invidiousFetch(path) {
 	let lastErr;
-	for (const base of PIPED_INSTANCES) {
+	for (const base of INVIDIOUS_INSTANCES) {
 		try {
 			const res = await fetch(base + path, {
 				headers: { "User-Agent": "Mozilla/5.0", "Accept": "application/json" },
 				signal: AbortSignal.timeout(8000),
 			});
 			if (res.ok) return res;
-			lastErr = new Error("piped " + res.status + " from " + base);
+			lastErr = new Error("invidious " + res.status + " from " + base);
 		} catch (e) { lastErr = e; }
 	}
 	throw lastErr;
 }
 
-// Search music
-fastify.get("/api/piped/search", async (request, reply) => {
+// Search music — returns video results filtered to music
+fastify.get("/api/invidious/search", async (request, reply) => {
 	try {
 		const q = request.query.q || "";
-		const res = await pipedFetch(`/search?q=${encodeURIComponent(q)}&filter=music_songs`);
+		const res = await invidiousFetch(
+			`/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId,title,author,lengthSeconds,videoThumbnails`
+		);
 		const text = await res.text();
 		reply.header("content-type", "application/json").send(text);
 	} catch (err) {
-		console.error("[piped/search]", err.message);
+		console.error("[invidious/search]", err.message);
 		reply.code(502).send(JSON.stringify({ error: err.message }));
 	}
 });
 
-// Get audio stream URL for a video ID
-fastify.get("/api/piped/streams/:videoId", async (request, reply) => {
+// Get audio stream URLs for a video ID
+fastify.get("/api/invidious/streams/:videoId", async (request, reply) => {
 	try {
 		const { videoId } = request.params;
 		if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
 			return reply.code(400).send({ error: "invalid videoId" });
 		}
-		const res = await pipedFetch(`/streams/${videoId}`);
+		const res = await invidiousFetch(
+			`/api/v1/videos/${videoId}?fields=adaptiveFormats,formatStreams`
+		);
 		const text = await res.text();
 		reply.header("content-type", "application/json").send(text);
 	} catch (err) {
-		console.error("[piped/streams]", err.message);
+		console.error("[invidious/streams]", err.message);
 		reply.code(502).send(JSON.stringify({ error: err.message }));
 	}
 });

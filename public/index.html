@@ -1779,8 +1779,8 @@ document.getElementById('resetCloak').addEventListener('click', () => {
 // Plain <audio> element approach — no YouTube IFrame API, no COEP issues.
 // ── MUSIC ───────────────────────────────────────────────────────────────
 // Audio via Piped API — open-source YouTube frontend, full songs, no auth.
-// Search: /api/piped/search?q=<q>  → items[].url ("/watch?v=ID"), title, uploaderName, thumbnail, duration
-// Stream: /api/piped/streams/<videoId> → audioStreams[].url (direct proxied m4a/opus)
+// Search: /api/invidious/search?q=<q>  → videoId, title, author, lengthSeconds, videoThumbnails
+// Stream: /api/invidious/streams/<videoId> → adaptiveFormats[].url (audio-only) or formatStreams[].url
 
 let audioEl = null;
 let musicQueue = [], musicQueueIdx = -1, currentTrack = null;
@@ -1826,36 +1826,40 @@ function getAudio() {
 
 // ── Piped API ────────────────────────────────────────────────────────
 async function pipedSearch(q) {
-  const res = await fetch('/api/piped/search?q=' + encodeURIComponent(q));
+  const res = await fetch('/api/invidious/search?q=' + encodeURIComponent(q + ' audio'));
   if (!res.ok) throw new Error('search failed (' + res.status + ')');
   const json = await res.json();
   if (json.error) throw new Error(json.error);
-  return (json.items || [])
-    .filter(s => s.url && s.type === 'stream' && s.duration > 0)
+  return (Array.isArray(json) ? json : [])
+    .filter(s => s.videoId && s.lengthSeconds > 0)
     .map(s => {
-      const videoId = s.url.replace('/watch?v=', '');
+      // Pick best thumbnail — prefer mqdefault (320x180) or first available
+      const thumbs = s.videoThumbnails || [];
+      const thumb = (thumbs.find(t => t.quality === 'medium') || thumbs[0] || {}).url || '';
       return {
-        id: videoId,
+        id: s.videoId,
         name: s.title,
-        artist: s.uploaderName || '',
-        duration_ms: (s.duration || 0) * 1000,
-        image: s.thumbnail || '',
-        audioUrl: null, // fetched on play
-        _source: 'piped'
+        artist: s.author || '',
+        duration_ms: (s.lengthSeconds || 0) * 1000,
+        image: thumb ? '/api/img/' + thumb.replace('https://', '') : '',
+        audioUrl: null,
+        _source: 'invidious'
       };
     });
 }
 
 async function pipedGetAudioUrl(videoId) {
-  const res = await fetch('/api/piped/streams/' + videoId);
+  const res = await fetch('/api/invidious/streams/' + videoId);
   if (!res.ok) throw new Error('stream fetch failed (' + res.status + ')');
   const json = await res.json();
   if (json.error) throw new Error(json.error);
-  const streams = (json.audioStreams || []).filter(s => s.url);
-  // prefer m4a (best compat), then highest bitrate
-  const m4a = streams.filter(s => s.mimeType?.includes('mp4') || s.codec?.includes('mp4a'));
-  const picked = m4a.sort((a,b) => b.bitrate - a.bitrate)[0]
-    || streams.sort((a,b) => b.bitrate - a.bitrate)[0];
+  // Invidious returns adaptiveFormats (audio-only) and formatStreams (muxed)
+  const adaptive = (json.adaptiveFormats || []).filter(s => s.url && s.type?.startsWith('audio'));
+  const muxed = (json.formatStreams || []).filter(s => s.url);
+  const streams = [...adaptive, ...muxed];
+  // prefer m4a/mp4 audio, then highest bitrate
+  const m4a = streams.filter(s => s.type?.includes('mp4') || s.encoding?.includes('aac'));
+  const picked = (m4a.length ? m4a : streams).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
   if (!picked) throw new Error('no audio stream found');
   return picked.url;
 }

@@ -7,36 +7,55 @@
 <body>
 <div id="p"></div>
 <script>
+console.log('[player] page loaded');
+
 var player, ready = false, pendingCmd = null;
 
 window.onYouTubeIframeAPIReady = function() {
+  console.log('[player] YT API ready, creating player...');
   player = new YT.Player('p', {
     height: '180', width: '320',
     videoId: 'jNQXAC9IVRw',
     playerVars: { autoplay: 0, controls: 0, rel: 0, playsinline: 1, mute: 1 },
     events: {
       onReady: function() {
+        console.log('[player] onReady fired!');
         ready = true;
         player.stopVideo();
         player.unMute();
-        window.parent.postMessage({ type: 'PLAYER_READY' }, '*');
+        try {
+          window.parent.postMessage({ type: 'PLAYER_READY' }, '*');
+          console.log('[player] postMessage sent to parent');
+        } catch(e) {
+          console.error('[player] postMessage failed:', e);
+        }
         if (pendingCmd) { handleCmd(pendingCmd); pendingCmd = null; }
       },
       onStateChange: function(e) {
+        console.log('[player] state change:', e.data);
         window.parent.postMessage({ type: 'STATE', state: e.data }, '*');
       },
       onError: function(e) {
+        console.error('[player] error:', e.data);
         window.parent.postMessage({ type: 'ERROR', code: e.data }, '*');
       }
     }
   });
 };
 
+window.onerror = function(msg, src, line) {
+  console.error('[player] uncaught error:', msg, src, line);
+};
+
 var tag = document.createElement('script');
+tag.onload = function() { console.log('[player] YT script loaded'); };
+tag.onerror = function() { console.error('[player] YT script FAILED to load'); };
 tag.src = 'https://www.youtube.com/iframe_api';
 document.head.appendChild(tag);
+console.log('[player] YT script tag added');
 
 function handleCmd(cmd) {
+  console.log('[player] handleCmd:', cmd);
   if (!player) return;
   if (cmd.action === 'play') {
     player.loadVideoById(cmd.videoId);
@@ -59,6 +78,7 @@ function handleCmd(cmd) {
 }
 
 window.addEventListener('message', function(e) {
+  console.log('[player] received message:', e.data);
   if (!e.data || !e.data.action) return;
   if (!ready) { pendingCmd = e.data; return; }
   handleCmd(e.data);

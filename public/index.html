@@ -58,8 +58,7 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
 }
 .cursor-trail {
   position: fixed; border-radius: 50%; pointer-events: none; z-index: 99997;
-  transform: translate(-50%,-50%); background: rgba(235,245,220,0.92);
-  transition: width 0.06s ease, height 0.06s ease;
+  transform: translate(-50%,-50%); background: rgba(235,245,220,0.9);
 }
 
 /* ── PANIC FLASH ── */
@@ -985,8 +984,8 @@ canvas#bg { position: fixed; inset: 0; z-index: 0; }
       </div>
     </div>
     <div class="music-right">
-      <div class="music-right-title" id="musicRightTitle">featured</div>
-      <div class="music-right-list" id="musicRightList"><div class="music-results-empty">loading...</div></div>
+      <div class="music-right-title" id="musicRightTitle">recently played</div>
+      <div class="music-right-list" id="musicRightList"><div class="music-results-empty">play a song to see history</div></div>
     </div>
   </div>
 </div>
@@ -1304,10 +1303,10 @@ function drawDotGrid(){
   dotTick++;ctx.clearRect(0,0,W,H);const waveTime=dotTick*0.012;
   for(let d of dotGrid){
     d.phase+=d.phaseSpeed;const breathe=Math.sin(d.phase)*0.3;
-    const waveOffset=Math.sin(d.bx*0.022+waveTime)*6+Math.sin(d.bx*0.011-waveTime*0.7)*3;
+    const waveOffset=Math.sin(d.bx*0.022+waveTime)*11+Math.sin(d.bx*0.011-waveTime*0.7)*5+Math.sin(d.by*0.018+waveTime*0.5)*4;
     let tx=d.bx,ty=d.by+waveOffset,extraR=0,extraAlpha=0,greenTint=0;
-    if(mouse.x!==-9999){const dx=d.bx-mouse.x,dy=d.by-mouse.y,dist=Math.sqrt(dx*dx+dy*dy);if(dist<140&&dist>0){const force=Math.pow(1-dist/140,2);tx=d.bx+(dx/dist)*force*18;ty=d.by+waveOffset+(dy/dist)*force*18;extraR=force*2.8;extraAlpha=force*0.5;greenTint=force;}}
-    d.x+=(tx-d.x)*0.1;d.y+=(ty-d.y)*0.1;
+    if(mouse.x!==-9999){const dx=d.bx-mouse.x,dy=d.by-mouse.y,dist=Math.sqrt(dx*dx+dy*dy);if(dist<220&&dist>0){const force=Math.pow(1-dist/220,2.2);tx=d.bx+(dx/dist)*force*52;ty=d.by+waveOffset+(dy/dist)*force*52;extraR=force*5.5;extraAlpha=force*0.7;greenTint=force;}}
+    d.x+=(tx-d.x)*0.14;d.y+=(ty-d.y)*0.14;
     const r=d.baseR+extraR+breathe,alpha=d.baseAlpha+extraAlpha;
     if(greenTint>0.1){const g=Math.floor(170+greenTint*70),gb=Math.floor(80+greenTint*80);ctx.fillStyle=`rgba(${Math.floor(180+greenTint*40)},${g},${gb},${alpha})`;}
     else ctx.fillStyle=`rgba(180,185,195,${alpha})`;
@@ -1621,42 +1620,51 @@ function animCursor() {
   requestAnimationFrame(animCursor);
 }
 animCursor();
-window.addEventListener('mousemove', () => { glowEl.style.opacity = '1'; dotEl.style.opacity = '1'; });
+window.addEventListener('mousemove', () => {
+  glowEl.style.opacity = '1';
+  const activeTag = document.activeElement?.tagName;
+  dotEl.style.opacity = (activeTag === 'INPUT' || activeTag === 'TEXTAREA') ? '0' : '1';
+});
 window.addEventListener('mouseleave', () => { glowEl.style.opacity = '0'; dotEl.style.opacity = '0'; });
+document.addEventListener('focusin', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    dotEl.style.opacity = '0';
+    trailDots.forEach(d => { d.el.style.opacity = '0'; });
+  }
+});
+document.addEventListener('focusout', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    dotEl.style.opacity = '1';
+    trailVisible = true;
+  }
+});
 
 // Trail
-const TRAIL_COUNT = 28;
-// Base sizes — front dots are larger and bulge more
-const TRAIL_BASE = Array.from({ length: TRAIL_COUNT }, (_, i) => Math.max(1.5, 9.5 - i * 0.28));
+const TRAIL_COUNT = 20;
 const trailDots = Array.from({ length: TRAIL_COUNT }, (_, i) => {
   const el = document.createElement('div');
   el.className = 'cursor-trail';
-  el.style.cssText = `width:${TRAIL_BASE[i]}px;height:${TRAIL_BASE[i]}px;opacity:0;`;
+  const size = Math.max(2, 7 - i * 0.28);
+  el.style.cssText = `width:${size}px;height:${size}px;opacity:0;`;
   document.body.appendChild(el);
-  return { el, x: -9999, y: -9999, vx: 0, vy: 0 };
+  return { el, x: -9999, y: -9999 };
 });
 let trailVisible = false;
-let trailTick = 0;
 function animTrail() {
-  trailTick++;
-  // Less smoothing = snappier, more responsive feel
-  trailDots[0].x += (mouse.x - trailDots[0].x) * 0.82;
-  trailDots[0].y += (mouse.y - trailDots[0].y) * 0.82;
+  // High lerp values = trail sticks close to real cursor
+  trailDots[0].x += (mouse.x - trailDots[0].x) * 0.88;
+  trailDots[0].y += (mouse.y - trailDots[0].y) * 0.88;
   for (let i = 1; i < TRAIL_COUNT; i++) {
-    trailDots[i].x += (trailDots[i-1].x - trailDots[i].x) * 0.55;
-    trailDots[i].y += (trailDots[i-1].y - trailDots[i].y) * 0.55;
+    trailDots[i].x += (trailDots[i-1].x - trailDots[i].x) * 0.72;
+    trailDots[i].y += (trailDots[i-1].y - trailDots[i].y) * 0.72;
   }
   trailDots.forEach((d, i) => {
-    // Wave bulge: sine wave travelling down the trail over time
-    const wave = Math.sin((i * 0.55) - (trailTick * 0.18)) * 0.5 + 0.5; // 0..1
-    const bulge = 1 + wave * 0.7; // scale up to 1.7x at peak
-    const baseSize = TRAIL_BASE[i];
-    const size = baseSize * bulge;
+    const size = Math.max(2, 7 - i * 0.28);
     d.el.style.width = size + 'px';
     d.el.style.height = size + 'px';
     d.el.style.left = d.x + 'px';
     d.el.style.top = d.y + 'px';
-    d.el.style.opacity = trailVisible ? (1 - i / TRAIL_COUNT) * 0.88 : 0;
+    d.el.style.opacity = trailVisible ? (1 - i / TRAIL_COUNT) * 0.9 : 0;
   });
   requestAnimationFrame(animTrail);
 }
@@ -1827,24 +1835,15 @@ async function enrichWithItunesArt(tracks) {
   }));
 }
 
-async function loadFeatured() {
-  try {
-    const data = await lastfmFetch({ method: 'chart.gettoptracks', limit: 20 });
-    const raw = data.tracks?.track || [];
-    const tracks = raw.map(t => ({
-      id: t.mbid || (t.artist?.name + '||' + t.name),
-      name: t.name,
-      artist: t.artist?.name || '',
-      duration_ms: parseInt(t.duration || 0) * 1000,
-      image: getLfmImage(t.image),
-      _source: 'lastfm'
-    }));
-    document.getElementById('musicRightTitle').textContent = 'top tracks';
-    const enriched = await enrichWithItunesArt(tracks);
-    renderTrackList(document.getElementById('musicRightList'), enriched, false);
-  } catch(e) {
-    document.getElementById('musicRightList').innerHTML = '<div class="music-results-empty">search to get started</div>';
-  }
+let recentlyPlayed = [];
+function addToRecent(track) {
+  recentlyPlayed = recentlyPlayed.filter(t => t.id !== track.id);
+  recentlyPlayed.unshift(track);
+  if (recentlyPlayed.length > 30) recentlyPlayed.pop();
+  renderTrackList(document.getElementById('musicRightList'), recentlyPlayed, false);
+}
+function loadFeatured() {
+  document.getElementById('musicRightList').innerHTML = '<div class="music-results-empty">play a song to see history</div>';
 }
 
 let searchTimer = null;
@@ -1915,8 +1914,13 @@ function renderQueue() {
   });
 }
 
+let _playingId = null;
 async function playTrack(track) {
+  // Prevent re-triggering the same track
+  if (_playingId === track.id && ytReady && ytPlayer) return;
+  _playingId = track.id;
   currentTrack = track;
+  addToRecent(track);
   const art = track.image || '';
   const artist = track.artist || '';
   document.getElementById('musicTrackTitle').textContent = track.name;
@@ -1926,26 +1930,31 @@ async function playTrack(track) {
   if (art) {
     artEl.src = art; artEl.classList.add('on');
     bgEl.style.backgroundImage = 'url(' + art + ')'; bgEl.classList.add('on');
-    document.getElementById('musicArtPlaceholder').classList.add('hidden');
+    document.getElementById('musicArtPlaceholder').classList.remove('hidden');
+    artEl.onload = () => document.getElementById('musicArtPlaceholder').classList.add('hidden');
+  } else {
+    // No art — reset to placeholder
+    artEl.src = ''; artEl.classList.remove('on');
+    bgEl.style.backgroundImage = ''; bgEl.classList.remove('on');
+    document.getElementById('musicArtPlaceholder').classList.remove('hidden');
   }
   document.querySelectorAll('.music-result-row').forEach(r => r.classList.toggle('playing', r.dataset.id === track.id));
   renderQueue();
-  toast('finding audio…', 'info', 2200);
+  // Clear any existing toasts before showing new ones
+  document.getElementById('toastContainer').innerHTML = '';
+  toast('finding audio…', 'info', 4000);
   try {
     const vid = await findYTVideo(artist + ' ' + track.name + ' audio');
-    if (!vid) { toast('audio not found', 'error'); return; }
-    toast('loading…', 'info', 2000);
+    if (!vid) { document.getElementById('toastContainer').innerHTML = ''; toast('audio not found', 'error', 3000); return; }
+    document.getElementById('toastContainer').innerHTML = '';
     if (ytReady && ytPlayer) {
       ytPlayer.loadVideoById(vid);
       ytPlayer.setVolume(musicVol);
       musicPlaying = true;
       updatePlayBtn();
     } else {
-      // Player not ready yet — store and wait
       pendingVideoId = vid;
-      // If player never initialized, kick it off now
       if (!ytPlayer) initYTPlayer();
-      // Wait up to 5s for player to become ready
       let waited = 0;
       const waitForPlayer = setInterval(() => {
         waited += 200;
@@ -1956,9 +1965,9 @@ async function playTrack(track) {
           musicPlaying = true;
           updatePlayBtn();
           pendingVideoId = null;
-        } else if (waited > 5000) {
+        } else if (waited > 8000) {
           clearInterval(waitForPlayer);
-          toast('player failed to load — try again', 'error', 3000);
+          toast('player not ready — reload page once', 'error', 4000);
         }
       }, 200);
     }
@@ -2008,15 +2017,21 @@ function initYTPlayer() {
 }
 window.onYouTubeIframeAPIReady = initYTPlayer;
 (function(){
-  const s = document.createElement('script');
-  // Use youtube-nocookie for better COEP compatibility
-  s.src = 'https://www.youtube.com/iframe_api';
-  s.setAttribute('crossorigin', 'anonymous');
-  // Don't let SW intercept this
-  s.setAttribute('data-scramjet-ignore', 'true');
-  document.head.appendChild(s);
-  // Fallback: if API never fires onYouTubeIframeAPIReady, try manually
-  setTimeout(() => { if (!ytPlayer) initYTPlayer(); }, 3000);
+  // Fetch YT iframe API through our server proxy to avoid COEP/SW issues
+  fetch('/api/ytApi')
+    .then(r => r.text())
+    .then(code => {
+      const s = document.createElement('script');
+      s.textContent = code;
+      document.head.appendChild(s);
+    })
+    .catch(() => {
+      // Fallback: direct load
+      const s = document.createElement('script');
+      s.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(s);
+    });
+  setTimeout(() => { if (!ytPlayer) initYTPlayer(); }, 4000);
 })();
 
 function updatePlayBtn() {

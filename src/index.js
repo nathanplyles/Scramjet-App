@@ -66,6 +66,21 @@ fastify.get("/api/itunes", async (request, reply) => {
 	}
 });
 
+// ── YouTube iframe API proxy — serves the YT iframe_api script to avoid COEP/SW blocking ──
+fastify.get("/api/ytApi", async (request, reply) => {
+	try {
+		const res = await fetch("https://www.youtube.com/iframe_api", {
+			headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }
+		});
+		const text = await res.text();
+		reply.header("content-type", "application/javascript")
+			.header("cache-control", "public, max-age=3600")
+			.send(text);
+	} catch (err) {
+		reply.code(502).send("// ytApi proxy error: " + err.message);
+	}
+});
+
 // ── YouTube video ID lookup proxy ─────────────────────────────────────
 fastify.get("/api/ytSearch", async (request, reply) => {
 	try {

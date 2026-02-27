@@ -1777,7 +1777,9 @@ document.getElementById('resetCloak').addEventListener('click', () => {
 
 // ── MUSIC ────────────────────────────────────────────────────────────────
 // Plain <audio> element approach — no YouTube IFrame API, no COEP issues.
-// Server-side: /api/ytSearch finds videoId, /api/ytAudio/:id streams audio.
+// ── MUSIC ───────────────────────────────────────────────────────────────
+// Audio via saavn.dev — free JioSaavn API, direct mp3 URLs, no auth needed.
+// Search returns track name, artist, duration, album art, and downloadUrl.
 
 let audioEl = null;          // the <audio> element
 let musicQueue = [], musicQueueIdx = -1, currentTrack = null;
@@ -1821,54 +1823,33 @@ function getAudio() {
   return audioEl;
 }
 
-// ── API helpers ──────────────────────────────────────────────────────
-async function lastfmFetch(params) {
-  const qs = Object.entries(params).map(([k,v]) => k + '=' + encodeURIComponent(v)).join('&');
-  const res = await fetch('/api/lastfm?' + qs);
-  if (!res.ok) throw new Error('lastfm ' + res.status);
-  return res.json();
-}
-
-async function searchTracks(q) {
-  const data = await lastfmFetch({ method: 'track.search', track: q, limit: 20 });
-  const tracks = data.results?.trackmatches?.track || [];
-  if (!Array.isArray(tracks)) return [];
-  return tracks.map(t => ({
-    id: t.mbid || (t.artist + '||' + t.name),
-    name: t.name,
-    artist: t.artist,
-    duration_ms: parseInt(t.duration || 0) * 1000,
-    image: getLfmImage(t.image),
-    _source: 'lastfm'
-  }));
-}
-
-function getLfmImage(imgs) {
-  if (!imgs) return '';
-  for (const s of ['extralarge','large','medium','small']) {
-    const found = imgs.find(i => i.size === s);
-    if (found?.['#text']) return '/api/img/' + found['#text'].replace('https://', '');
-  }
-  return '';
-}
-
-async function getItunesArt(artist, track) {
-  try {
-    const q = encodeURIComponent(artist + ' ' + track);
-    const res = await fetch('/api/itunes?term=' + q + '&media=music&limit=5');
-    if (!res.ok) return null;
-    const data = await res.json();
-    const match = data.results?.[0];
-    if (!match) return null;
-    const rawUrl = (match.artworkUrl100 || '').replace('100x100bb', '600x600bb');
-    return rawUrl ? '/api/img/' + rawUrl.replace('https://', '') : null;
-  } catch(e) { return null; }
-}
-
-async function enrichWithItunesArt(tracks) {
-  return Promise.all(tracks.map(async t => {
-    const art = await getItunesArt(t.artist, t.name);
-    return { ...t, image: art || t.image };
+// ── Saavn API ─────────────────────────────────────────────────────────
+async function saavnSearch(q) {
+  const res = await fetch('/api/saavn?query=' + encodeURIComponent(q) + '&limit=20');
+  if (!res.ok) throw new Error('saavn ' + res.status);
+  const json = await res.json();
+  const results = json?.data?.results || [];
+  return results.map(s => ({
+    id: s.id,
+    name: s.name,
+    artist: s.artists?.primary?.[0]?.name || s.primaryArtists || '',
+    duration_ms: (s.duration || 0) * 1000,
+    // image: pick highest quality (index 2 = 500x500, fallback to 1, 0)
+    image: (() => {
+      const imgs = s.image || [];
+      const best = imgs[2] || imgs[1] || imgs[0];
+      const url = best?.url || best?.link || '';
+      return url ? '/api/img/' + url.replace('https://', '') : '';
+    })(),
+    // downloadUrl: pick highest quality (index 4 = 320kbps, fallback down)
+    audioUrl: (() => {
+      const urls = s.downloadUrl || [];
+      for (let i = urls.length - 1; i >= 0; i--) {
+        if (urls[i]?.url) return urls[i].url;
+      }
+      return null;
+    })(),
+    _source: 'saavn'
   }));
 }
 
@@ -1894,14 +1875,13 @@ document.getElementById('musicSearch').addEventListener('input', e => {
   el.innerHTML = '<div class="music-results-empty">searching...</div>';
   searchTimer = setTimeout(async () => {
     try {
-      const tracks = await searchTracks(q);
+      const tracks = await saavnSearch(q);
       if (!tracks.length) { el.innerHTML = '<div class="music-results-empty">no results</div>'; return; }
-      el.innerHTML = '<div class="music-results-empty">loading art...</div>';
-      const enriched = await enrichWithItunesArt(tracks);
       el.innerHTML = '';
-      renderTrackList(el, enriched, true);
-    } catch(e) {
-      el.innerHTML = '<div class="music-results-empty">search failed — check last.fm key in settings</div>';
+      renderTrackList(el, tracks, true);
+    } catch(err) {
+      console.error('[music] search error:', err);
+      el.innerHTML = '<div class="music-results-empty">search failed</div>';
     }
   }, 350);
 });
@@ -1959,7 +1939,7 @@ async function playTrack(track) {
   currentTrack = track;
   addToRecent(track);
 
-  // Update UI
+  // Update UI immediately
   document.getElementById('musicTrackTitle').textContent = track.name;
   document.getElementById('musicTrackArtist').textContent = track.artist || '';
   const artEl = document.getElementById('musicArt');
@@ -1979,24 +1959,20 @@ async function playTrack(track) {
   );
   renderQueue();
 
-  // Find YouTube video ID
-  document.getElementById('toastContainer').innerHTML = '';
-  toast('finding audio…', 'info', 6000);
+  // saavn gives us a direct audio URL on the track object — no lookup needed
+  const audioUrl = track.audioUrl;
+  if (!audioUrl) {
+    toast('no audio available for this track', 'error', 3000);
+    return;
+  }
 
   try {
-    const res = await fetch('/api/ytSearch?q=' + encodeURIComponent((track.artist || '') + ' ' + track.name + ' audio'));
-    const data = await res.json();
-    const vid = data.videoId;
     document.getElementById('toastContainer').innerHTML = '';
-
-    if (!vid) { toast('audio not found', 'error', 3000); return; }
-
-    // Point the audio element at our server-side stream proxy
+    toast('loading…', 'info', 4000);
     const audio = getAudio();
     audio.pause();
-    audio.src = '/api/ytAudio/' + vid;
+    audio.src = audioUrl;
     audio.volume = musicVol / 100;
-    toast('loading…', 'info', 4000);
     await audio.play();
     document.getElementById('toastContainer').innerHTML = '';
     musicPlaying = true;

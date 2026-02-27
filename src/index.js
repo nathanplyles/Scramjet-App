@@ -49,15 +49,25 @@ fastify.get("/api/saavn", async (request, reply) => {
 			headers: {
 				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
 				"Accept": "application/json",
-				"Referer": "https://saavn.dev",
 			},
 		});
 		console.log("[saavn] status:", res.status, "content-type:", res.headers.get("content-type"));
 		const text = await res.text();
 		if (!res.ok) {
-			console.error("[saavn] error body:", text.slice(0, 200));
-			return reply.code(res.status).header("content-type", "application/json").send(JSON.stringify({ error: "saavn returned " + res.status, body: text.slice(0, 200) }));
+			console.error("[saavn] error body:", text.slice(0, 300));
+			return reply.code(res.status).header("content-type", "application/json").send(JSON.stringify({ error: "saavn " + res.status }));
 		}
+		// Log first result shape so we can verify field names are correct
+		try {
+			const parsed = JSON.parse(text);
+			const first = parsed?.data?.results?.[0];
+			if (first) {
+				console.log("[saavn] first result keys:", Object.keys(first).join(", "));
+				console.log("[saavn] artists:", JSON.stringify(first.artists).slice(0, 150));
+				console.log("[saavn] image:", JSON.stringify(first.image).slice(0, 150));
+				console.log("[saavn] downloadUrl:", JSON.stringify(first.downloadUrl).slice(0, 150));
+			}
+		} catch(_) {}
 		reply.header("content-type", "application/json").send(text);
 	} catch (err) {
 		console.error("[saavn] fetch error:", err.message);

@@ -1778,10 +1778,11 @@ document.getElementById('resetCloak').addEventListener('click', () => {
 // ── MUSIC ────────────────────────────────────────────────────────────────
 // Plain <audio> element approach — no YouTube IFrame API, no COEP issues.
 // ── MUSIC ───────────────────────────────────────────────────────────────
-// Audio via saavn.dev — free JioSaavn API, direct mp3 URLs, no auth needed.
-// Search returns track name, artist, duration, album art, and downloadUrl.
+// Audio via Piped API — open-source YouTube frontend, full songs, no auth.
+// Search: /api/piped/search?q=<q>  → items[].url ("/watch?v=ID"), title, uploaderName, thumbnail, duration
+// Stream: /api/piped/streams/<videoId> → audioStreams[].url (direct proxied m4a/opus)
 
-let audioEl = null;          // the <audio> element
+let audioEl = null;
 let musicQueue = [], musicQueueIdx = -1, currentTrack = null;
 let musicPlaying = false, musicShuffleOn = false, musicRepeatOn = false;
 let musicVol = 80, progressDragging = false, progressTimer = null;
@@ -1823,36 +1824,40 @@ function getAudio() {
   return audioEl;
 }
 
-async function saavnSearch(q) {
-  const res = await fetch('/api/saavn?query=' + encodeURIComponent(q) + '&limit=20');
+// ── Piped API ────────────────────────────────────────────────────────
+async function pipedSearch(q) {
+  const res = await fetch('/api/piped/search?q=' + encodeURIComponent(q));
+  if (!res.ok) throw new Error('search failed (' + res.status + ')');
   const json = await res.json();
-  if (!res.ok) throw new Error(json.error || 'saavn ' + res.status);
-  // saavn.dev response shape: { data: { results: [...] } }
-  // Each result has: id, name, artists.primary[], duration, image[], downloadUrl[]
-  const results = json?.data?.results || [];
-  return results.map(s => {
-    const imgs = Array.isArray(s.image) ? s.image : [];
-    const best = imgs[2] || imgs[1] || imgs[0];
-    const imgUrl = best?.url || best?.link || '';
-    const dlUrls = Array.isArray(s.downloadUrl) ? s.downloadUrl : [];
-    // highest quality last in array (320kbps)
-    let audioUrl = null;
-    for (let i = dlUrls.length - 1; i >= 0; i--) {
-      if (dlUrls[i]?.url) { audioUrl = dlUrls[i].url; break; }
-    }
-    const artistName = s.artists?.primary?.[0]?.name
-      || (Array.isArray(s.artists?.primary) ? '' : '')
-      || s.primaryArtists || '';
-    return {
-      id: s.id,
-      name: s.name,
-      artist: artistName,
-      duration_ms: (s.duration || 0) * 1000,
-      image: imgUrl ? '/api/img/' + imgUrl.replace('https://', '') : '',
-      audioUrl,
-      _source: 'saavn'
-    };
-  });
+  if (json.error) throw new Error(json.error);
+  return (json.items || [])
+    .filter(s => s.url && s.type === 'stream' && s.duration > 0)
+    .map(s => {
+      const videoId = s.url.replace('/watch?v=', '');
+      return {
+        id: videoId,
+        name: s.title,
+        artist: s.uploaderName || '',
+        duration_ms: (s.duration || 0) * 1000,
+        image: s.thumbnail || '',
+        audioUrl: null, // fetched on play
+        _source: 'piped'
+      };
+    });
+}
+
+async function pipedGetAudioUrl(videoId) {
+  const res = await fetch('/api/piped/streams/' + videoId);
+  if (!res.ok) throw new Error('stream fetch failed (' + res.status + ')');
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
+  const streams = (json.audioStreams || []).filter(s => s.url);
+  // prefer m4a (best compat), then highest bitrate
+  const m4a = streams.filter(s => s.mimeType?.includes('mp4') || s.codec?.includes('mp4a'));
+  const picked = m4a.sort((a,b) => b.bitrate - a.bitrate)[0]
+    || streams.sort((a,b) => b.bitrate - a.bitrate)[0];
+  if (!picked) throw new Error('no audio stream found');
+  return picked.url;
 }
 
 // ── Recently played ──────────────────────────────────────────────────
@@ -1877,7 +1882,7 @@ document.getElementById('musicSearch').addEventListener('input', e => {
   el.innerHTML = '<div class="music-results-empty">searching...</div>';
   searchTimer = setTimeout(async () => {
     try {
-      const tracks = await saavnSearch(q);
+      const tracks = await pipedSearch(q);
       if (!tracks.length) { el.innerHTML = '<div class="music-results-empty">no results</div>'; return; }
       el.innerHTML = '';
       renderTrackList(el, tracks, true);
@@ -1961,14 +1966,12 @@ async function playTrack(track) {
   );
   renderQueue();
 
-  // saavn gives us a direct audio URL on the track object — no lookup needed
-  const audioUrl = track.audioUrl;
-  if (!audioUrl) {
-    toast('no audio available for this track', 'error', 3000);
-    return;
-  }
-
+  // Fetch audio stream URL from Piped then play
   try {
+    document.getElementById('toastContainer').innerHTML = '';
+    toast('finding stream…', 'info', 8000);
+    const audioUrl = await pipedGetAudioUrl(track.id);
+    if (_playingId !== track.id) return; // track changed while loading
     document.getElementById('toastContainer').innerHTML = '';
     toast('loading…', 'info', 4000);
     const audio = getAudio();
@@ -1981,7 +1984,7 @@ async function playTrack(track) {
     updatePlayBtn();
   } catch(e) {
     document.getElementById('toastContainer').innerHTML = '';
-    toast('playback error: ' + e.message, 'error', 3000);
+    toast('playback failed: ' + e.message, 'error', 4000);
     console.error('[music] playback error:', e);
   }
 }

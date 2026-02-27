@@ -38,39 +38,56 @@ fastify.register(fastifyStatic, { root: scramjetPath, prefix: "/scram/", decorat
 fastify.register(fastifyStatic, { root: libcurlPath, prefix: "/libcurl/", decorateReply: false });
 fastify.register(fastifyStatic, { root: baremuxPath, prefix: "/baremux/", decorateReply: false });
 
-// ── Saavn search proxy ─────────────────────────────────────────────────
-fastify.get("/api/saavn", async (request, reply) => {
-	try {
-		const q = request.query.query || "";
-		const limit = request.query.limit || "20";
-		const url = `https://saavn.sumit.co/api/search/songs?query=${encodeURIComponent(q)}&limit=${limit}`;
-		console.log("[saavn] fetching:", url);
-		const res = await fetch(url, {
-			headers: {
-				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-				"Accept": "application/json",
-			},
-		});
-		console.log("[saavn] status:", res.status, "content-type:", res.headers.get("content-type"));
-		const text = await res.text();
-		if (!res.ok) {
-			console.error("[saavn] error body:", text.slice(0, 300));
-			return reply.code(res.status).header("content-type", "application/json").send(JSON.stringify({ error: "saavn " + res.status }));
-		}
-		// Log first result shape so we can verify field names are correct
+// ── Piped API proxy (YouTube audio, full songs, no auth) ───────────────
+// Piped is an open-source YouTube frontend. Public instances return full
+// audio stream URLs via their /search and /streams endpoints.
+// Tries primary instance, falls back to alternates if it fails.
+const PIPED_INSTANCES = [
+	"https://pipedapi.kavin.rocks",
+	"https://api.piped.projectsegfau.lt",
+	"https://piped-api.garudalinux.org",
+];
+
+async function pipedFetch(path) {
+	let lastErr;
+	for (const base of PIPED_INSTANCES) {
 		try {
-			const parsed = JSON.parse(text);
-			const first = parsed?.data?.results?.[0];
-			if (first) {
-				console.log("[saavn] first result keys:", Object.keys(first).join(", "));
-				console.log("[saavn] artists:", JSON.stringify(first.artists).slice(0, 150));
-				console.log("[saavn] image:", JSON.stringify(first.image).slice(0, 150));
-				console.log("[saavn] downloadUrl:", JSON.stringify(first.downloadUrl).slice(0, 150));
-			}
-		} catch(_) {}
+			const res = await fetch(base + path, {
+				headers: { "User-Agent": "Mozilla/5.0", "Accept": "application/json" },
+				signal: AbortSignal.timeout(8000),
+			});
+			if (res.ok) return res;
+			lastErr = new Error("piped " + res.status + " from " + base);
+		} catch (e) { lastErr = e; }
+	}
+	throw lastErr;
+}
+
+// Search music
+fastify.get("/api/piped/search", async (request, reply) => {
+	try {
+		const q = request.query.q || "";
+		const res = await pipedFetch(`/search?q=${encodeURIComponent(q)}&filter=music_songs`);
+		const text = await res.text();
 		reply.header("content-type", "application/json").send(text);
 	} catch (err) {
-		console.error("[saavn] fetch error:", err.message);
+		console.error("[piped/search]", err.message);
+		reply.code(502).send(JSON.stringify({ error: err.message }));
+	}
+});
+
+// Get audio stream URL for a video ID
+fastify.get("/api/piped/streams/:videoId", async (request, reply) => {
+	try {
+		const { videoId } = request.params;
+		if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+			return reply.code(400).send({ error: "invalid videoId" });
+		}
+		const res = await pipedFetch(`/streams/${videoId}`);
+		const text = await res.text();
+		reply.header("content-type", "application/json").send(text);
+	} catch (err) {
+		console.error("[piped/streams]", err.message);
 		reply.code(502).send(JSON.stringify({ error: err.message }));
 	}
 });

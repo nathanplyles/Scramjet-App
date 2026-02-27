@@ -38,61 +38,93 @@ fastify.register(fastifyStatic, { root: scramjetPath, prefix: "/scram/", decorat
 fastify.register(fastifyStatic, { root: libcurlPath, prefix: "/libcurl/", decorateReply: false });
 fastify.register(fastifyStatic, { root: baremuxPath, prefix: "/baremux/", decorateReply: false });
 
-// ── Invidious API proxy (YouTube audio, full songs, no auth) ──────────
-// Invidious is an open-source YouTube frontend with a stable public API.
-// /api/v1/search returns video metadata, /api/v1/videos/:id returns streams.
-const INVIDIOUS_INSTANCES = [
-	"https://invidious.snopyta.org",
-	"https://invidious.tiekoetter.com",
-	"https://inv.nadeko.net",
-	"https://invidious.nerdvpn.de",
-	"https://invidious.privacydev.net",
-];
+// ── Music search + stream via YouTube scrape ──────────────────────────
+const YT_HEADERS = {
+	"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+	"Accept-Language": "en-US,en;q=0.9",
+	"Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
+};
 
-async function invidiousFetch(path) {
-	let lastErr;
-	for (const base of INVIDIOUS_INSTANCES) {
-		try {
-			const res = await fetch(base + path, {
-				headers: { "User-Agent": "Mozilla/5.0", "Accept": "application/json" },
-				signal: AbortSignal.timeout(8000),
-			});
-			if (res.ok) return res;
-			lastErr = new Error("invidious " + res.status + " from " + base);
-		} catch (e) { lastErr = e; }
-	}
-	throw lastErr;
-}
-
-// Search music — returns video results filtered to music
+// Search: scrape YouTube search results page for video metadata
 fastify.get("/api/invidious/search", async (request, reply) => {
 	try {
-		const q = request.query.q || "";
-		const res = await invidiousFetch(
-			`/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId,title,author,lengthSeconds,videoThumbnails`
-		);
-		const text = await res.text();
-		reply.header("content-type", "application/json").send(text);
+		const q = (request.query.q || "") + " lyrics";
+		const url = "https://www.youtube.com/results?search_query=" + encodeURIComponent(q) + "&sp=EgIQAQ%3D%3D"; // music filter
+		const res = await fetch(url, { headers: YT_HEADERS, signal: AbortSignal.timeout(8000) });
+		const html = await res.text();
+		// Extract ytInitialData JSON
+		const match = html.match(/var ytInitialData = ({.+?});<\/script>/s) ||
+		              html.match(/ytInitialData = ({.+?});/s);
+		if (!match) throw new Error("no ytInitialData");
+		const data = JSON.parse(match[1]);
+		const contents = data?.contents?.twoColumnSearchResultsRenderer?.primaryContents
+			?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
+		const items = contents
+			.filter(i => i.videoRenderer)
+			.map(i => {
+				const v = i.videoRenderer;
+				const dur = v.lengthText?.simpleText || "";
+				const parts = dur.split(":").map(Number);
+				const secs = parts.length === 3 ? parts[0]*3600+parts[1]*60+parts[2] : parts.length === 2 ? parts[0]*60+parts[1] : 0;
+				const thumb = v.thumbnail?.thumbnails?.slice(-1)[0]?.url || "";
+				return {
+					videoId: v.videoId,
+					title: v.title?.runs?.[0]?.text || "",
+					author: v.ownerText?.runs?.[0]?.text || "",
+					lengthSeconds: secs,
+					thumb,
+				};
+			})
+			.filter(i => i.videoId && i.lengthSeconds > 0 && i.lengthSeconds < 1200); // skip >20min
+		reply.header("content-type", "application/json").send(JSON.stringify(items));
 	} catch (err) {
-		console.error("[invidious/search]", err.message);
+		console.error("[search]", err.message);
 		reply.code(502).send(JSON.stringify({ error: err.message }));
 	}
 });
 
-// Get audio stream URLs for a video ID
+// Stream: use yt-dlp style innertube API to get audio URL
 fastify.get("/api/invidious/streams/:videoId", async (request, reply) => {
 	try {
 		const { videoId } = request.params;
 		if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
 			return reply.code(400).send({ error: "invalid videoId" });
 		}
-		const res = await invidiousFetch(
-			`/api/v1/videos/${videoId}?fields=adaptiveFormats,formatStreams`
-		);
-		const text = await res.text();
-		reply.header("content-type", "application/json").send(text);
+		// Use YouTube's own innertube API — no key needed for this endpoint
+		const body = JSON.stringify({
+			videoId,
+			context: {
+				client: {
+					clientName: "ANDROID",
+					clientVersion: "19.09.37",
+					androidSdkVersion: 30,
+					hl: "en",
+					gl: "US",
+				},
+			},
+		});
+		const res = await fetch("https://www.youtube.com/youtubei/v1/player?prettyPrint=false", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"User-Agent": "com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip",
+				"X-YouTube-Client-Name": "3",
+				"X-YouTube-Client-Version": "19.09.37",
+				"Origin": "https://www.youtube.com",
+			},
+			body,
+			signal: AbortSignal.timeout(10000),
+		});
+		const json = await res.json();
+		const formats = json?.streamingData?.adaptiveFormats || [];
+		const audioFormats = formats.filter(f => f.mimeType?.startsWith("audio") && f.url);
+		if (!audioFormats.length) throw new Error("no audio formats");
+		reply.header("content-type", "application/json").send(JSON.stringify({
+			adaptiveFormats: audioFormats,
+			formatStreams: [],
+		}));
 	} catch (err) {
-		console.error("[invidious/streams]", err.message);
+		console.error("[streams]", err.message);
 		reply.code(502).send(JSON.stringify({ error: err.message }));
 	}
 });

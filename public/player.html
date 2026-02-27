@@ -2,58 +2,67 @@
 <html>
 <head>
 <meta charset="utf-8">
-<style>
-  * { margin: 0; padding: 0; }
-  body { background: #000; overflow: hidden; }
-  #player { position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; }
-</style>
+<style>* { margin:0; padding:0; } body { background:#000; }</style>
 </head>
 <body>
-<div id="player"></div>
+<div id="p"></div>
 <script>
-  var player, ready = false, pendingCmd = null;
+var player, ready = false, pendingCmd = null;
 
-  window.onYouTubeIframeAPIReady = function() {
-    player = new YT.Player('player', {
-      height: '1', width: '1',
-      playerVars: { autoplay: 0, controls: 0, rel: 0, playsinline: 1 },
-      events: {
-        onReady: function() {
-          ready = true;
-          window.parent.postMessage({ type: 'PLAYER_READY' }, '*');
-          if (pendingCmd) { handleCmd(pendingCmd); pendingCmd = null; }
-        },
-        onStateChange: function(e) {
-          window.parent.postMessage({ type: 'STATE', state: e.data }, '*');
-        },
-        onError: function(e) {
-          window.parent.postMessage({ type: 'ERROR', code: e.data }, '*');
-        }
+window.onYouTubeIframeAPIReady = function() {
+  player = new YT.Player('p', {
+    height: '180', width: '320',
+    videoId: 'jNQXAC9IVRw',
+    playerVars: { autoplay: 0, controls: 0, rel: 0, playsinline: 1, mute: 1 },
+    events: {
+      onReady: function() {
+        ready = true;
+        player.stopVideo();
+        player.unMute();
+        window.parent.postMessage({ type: 'PLAYER_READY' }, '*');
+        if (pendingCmd) { handleCmd(pendingCmd); pendingCmd = null; }
+      },
+      onStateChange: function(e) {
+        window.parent.postMessage({ type: 'STATE', state: e.data }, '*');
+      },
+      onError: function(e) {
+        window.parent.postMessage({ type: 'ERROR', code: e.data }, '*');
       }
-    });
-  };
-
-  var tag = document.createElement('script');
-  tag.src = 'https://www.youtube.com/iframe_api';
-  document.head.appendChild(tag);
-
-  function handleCmd(cmd) {
-    if (!player) return;
-    if (cmd.action === 'play') { player.loadVideoById(cmd.videoId); player.setVolume(cmd.volume || 80); }
-    else if (cmd.action === 'pause') { player.pauseVideo(); }
-    else if (cmd.action === 'resume') { player.playVideo(); }
-    else if (cmd.action === 'seek') { player.seekTo(cmd.time, true); }
-    else if (cmd.action === 'volume') { player.setVolume(cmd.volume); }
-    else if (cmd.action === 'getTime') {
-      window.parent.postMessage({ type: 'TIME', current: player.getCurrentTime(), duration: player.getDuration() }, '*');
     }
-  }
-
-  window.addEventListener('message', function(e) {
-    if (!e.data || !e.data.action) return;
-    if (!ready) { pendingCmd = e.data; return; }
-    handleCmd(e.data);
   });
+};
+
+var tag = document.createElement('script');
+tag.src = 'https://www.youtube.com/iframe_api';
+document.head.appendChild(tag);
+
+function handleCmd(cmd) {
+  if (!player) return;
+  if (cmd.action === 'play') {
+    player.loadVideoById(cmd.videoId);
+    player.setVolume(cmd.volume != null ? cmd.volume : 80);
+  } else if (cmd.action === 'pause') {
+    player.pauseVideo();
+  } else if (cmd.action === 'resume') {
+    player.playVideo();
+  } else if (cmd.action === 'seek') {
+    player.seekTo(cmd.time, true);
+  } else if (cmd.action === 'volume') {
+    player.setVolume(cmd.volume);
+  } else if (cmd.action === 'getTime') {
+    window.parent.postMessage({
+      type: 'TIME',
+      current: player.getCurrentTime(),
+      duration: player.getDuration()
+    }, '*');
+  }
+}
+
+window.addEventListener('message', function(e) {
+  if (!e.data || !e.data.action) return;
+  if (!ready) { pendingCmd = e.data; return; }
+  handleCmd(e.data);
+});
 </script>
 </body>
 </html>

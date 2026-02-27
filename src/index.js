@@ -66,22 +66,40 @@ fastify.get("/api/itunes", async (request, reply) => {
 	}
 });
 
-// ── YouTube: search + audio stream proxy ──────────────────────────────
-// Uses ytdl-core to extract audio-only stream URLs server-side.
-// Frontend uses a plain <audio> element — no iframes, no COEP issues.
-import ytdl from "@distube/ytdl-core";
+// ── YouTube helpers (zero dependencies) ───────────────────────────────
+const YT_HEADERS = {
+	"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+	"Accept-Language": "en-US,en;q=0.9",
+	"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+};
 
-// Search YouTube for a video ID by query string
+function extractPlayerData(html) {
+	const patterns = [
+		/var ytInitialPlayerResponse\s*=\s*(\{.+?\});(?:\s*(?:var|const|let)\s|\s*if\s*\()/s,
+		/ytInitialPlayerResponse\s*=\s*(\{[\s\S]+?\});\s*(?:var |const |let |window\.)/,
+	];
+	for (const p of patterns) {
+		const m = html.match(p);
+		if (m) { try { return JSON.parse(m[1]); } catch {} }
+	}
+	return null;
+}
+
+function pickAudioFormat(streamingData) {
+	const formats = [
+		...(streamingData.adaptiveFormats || []),
+		...(streamingData.formats || []),
+	].filter(f => f.mimeType?.startsWith("audio/") && f.url);
+	formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+	return formats.find(f => f.mimeType.includes("opus")) || formats[0] || null;
+}
+
+// ── YouTube search ─────────────────────────────────────────────────────
 fastify.get("/api/ytSearch", async (request, reply) => {
 	try {
 		const q = request.query.q || "";
 		const url = "https://www.youtube.com/results?search_query=" + encodeURIComponent(q);
-		const res = await fetch(url, {
-			headers: {
-				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-				"Accept-Language": "en-US,en;q=0.9",
-			}
-		});
+		const res = await fetch(url, { headers: YT_HEADERS });
 		const text = await res.text();
 		const match = text.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
 		if (match) {
@@ -95,29 +113,43 @@ fastify.get("/api/ytSearch", async (request, reply) => {
 	}
 });
 
-// Stream audio for a given YouTube video ID directly to the browser
+// ── YouTube audio proxy (no ytdl-core, works on Node 18+) ─────────────
 fastify.get("/api/ytAudio/:videoId", async (request, reply) => {
 	const { videoId } = request.params;
 	if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
 		return reply.code(400).send({ error: "invalid videoId" });
 	}
 	try {
-		const videoUrl = "https://www.youtube.com/watch?v=" + videoId;
-		// Get info first to set content-length if available
-		const info = await ytdl.getInfo(videoUrl);
-		const format = ytdl.chooseFormat(info.formats, {
-			quality: "highestaudio",
-			filter: "audioonly",
+		const pageRes = await fetch("https://www.youtube.com/watch?v=" + videoId, { headers: YT_HEADERS });
+		const html = await pageRes.text();
+		const playerData = extractPlayerData(html);
+		if (!playerData?.streamingData) {
+			console.error("[ytAudio] no player/streaming data for", videoId);
+			return reply.code(502).send({ error: "could not extract streaming data" });
+		}
+		const format = pickAudioFormat(playerData.streamingData);
+		if (!format) {
+			console.error("[ytAudio] no audio format for", videoId);
+			return reply.code(502).send({ error: "no audio format found" });
+		}
+		console.log("[ytAudio] streaming", videoId, format.mimeType, (format.bitrate || 0) + "bps");
+		const audioRes = await fetch(format.url, {
+			headers: {
+				"User-Agent": YT_HEADERS["User-Agent"],
+				"Referer": "https://www.youtube.com/",
+				...(request.headers.range ? { "Range": request.headers.range } : {}),
+			},
 		});
-		console.log("[ytAudio] streaming", videoId, format.mimeType, format.audioBitrate + "kbps");
-		reply
-			.header("content-type", format.mimeType || "audio/webm")
-			.header("accept-ranges", "bytes")
-			.header("cache-control", "no-cache")
-			.header("cross-origin-resource-policy", "same-origin");
-		const stream = ytdl(videoUrl, { format });
-		// Pipe the ytdl stream into the reply
-		reply.send(stream);
+		reply.code(audioRes.status);
+		reply.header("content-type", audioRes.headers.get("content-type") || format.mimeType || "audio/webm");
+		reply.header("accept-ranges", "bytes");
+		reply.header("cache-control", "no-cache");
+		reply.header("cross-origin-resource-policy", "same-origin");
+		const cl = audioRes.headers.get("content-length");
+		const cr = audioRes.headers.get("content-range");
+		if (cl) reply.header("content-length", cl);
+		if (cr) reply.header("content-range", cr);
+		reply.send(audioRes.body);
 	} catch (err) {
 		console.error("[ytAudio] error for", videoId, err.message);
 		reply.code(502).send({ error: err.message });
@@ -142,6 +174,7 @@ fastify.get("/api/img/*", async (request, reply) => {
 		reply.code(502).send();
 	}
 });
+
 // ──────────────────────────────────────────────────────────────────────
 
 fastify.setNotFoundHandler((req, reply) => {

@@ -4,7 +4,7 @@
 	"description": "The demo application for Scramjet, a high-performance web proxy.",
 	"type": "module",
 	"engines": {
-		"node": "20.x",
+		"node": ">=18.0.0",
 		"npm": ">=7.0.0"
 	},
 	"scripts": {
@@ -19,7 +19,6 @@
 	"author": "Mercury Workshop",
 	"license": "GNU AFFERO",
 	"dependencies": {
-		"@distube/ytdl-core": "^4.16.12",
 		"@fastify/static": "^8.2.0",
 		"@mercuryworkshop/bare-mux": "^2.1.7",
 		"@mercuryworkshop/libcurl-transport": "^1.5.2",

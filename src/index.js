@@ -70,31 +70,32 @@ fastify.get("/api/itunes", async (request, reply) => {
 // Uses YouTube's internal /youtubei/v1/player endpoint — much more
 // reliable than scraping the watch page HTML.
 
-const INNERTUBE_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8";
-const INNERTUBE_CONTEXT = {
-	client: {
-		clientName: "ANDROID",
-		clientVersion: "18.11.34",
-		androidSdkVersion: 30,
-		hl: "en",
-		gl: "US",
-		utcOffsetMinutes: 0,
-	},
-};
-
+// Uses the TV client — no API key required, works reliably
 async function getStreamingData(videoId) {
-	const url = `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_KEY}&prettyPrint=false`;
+	const url = "https://www.youtube.com/youtubei/v1/player?prettyPrint=false";
 	const body = JSON.stringify({
-		context: INNERTUBE_CONTEXT,
+		context: {
+			client: {
+				clientName: "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
+				clientVersion: "2.0",
+				hl: "en",
+				gl: "US",
+				utcOffsetMinutes: 0,
+			},
+			thirdParty: {
+				embedUrl: "https://www.youtube.com/",
+			},
+		},
 		videoId,
-		params: "2AMBCgIQBg==",
 	});
 	const res = await fetch(url, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
-			"User-Agent": "com.google.android.youtube/18.11.34 (Linux; U; Android 11) gzip",
-			"X-Goog-Api-Format-Version": "2",
+			"User-Agent": "Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/6.0 TV Safari/538.1",
+			"Origin": "https://www.youtube.com",
+			"X-Youtube-Client-Name": "85",
+			"X-Youtube-Client-Version": "2.0",
 		},
 		body,
 	});

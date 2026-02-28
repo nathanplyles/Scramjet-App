@@ -12,6 +12,7 @@ async function handleRequest(event) {
 		url.includes("youtube.com/iframe_api") ||
 		url.includes("ytimg.com") ||
 		url.includes("youtube.com/embed") ||
+		url.includes("cdn.jsdelivr.net") ||
 		url.startsWith(self.location.origin + "/api/")
 	) {
 		return fetch(event.request);

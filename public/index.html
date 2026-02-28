@@ -2335,9 +2335,23 @@ function getAudio() {
 // ── Last.fm ───────────────────────────────────────────────────────────
 async function lastfmFetch(params) {
   const qs = Object.entries(params).map(([k,v]) => k + '=' + encodeURIComponent(v)).join('&');
-  const res = await fetch('/api/lastfm?' + qs);
-  if (!res.ok) throw new Error('lastfm ' + res.status);
-  return res.json();
+  const url = '/api/lastfm?' + qs;
+  console.log('[lastfm] fetching:', url);
+  try {
+    const res = await fetch(url);
+    console.log('[lastfm] response status:', res.status);
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      console.error('[lastfm] error body:', text);
+      throw new Error('lastfm ' + res.status + ': ' + text.slice(0, 200));
+    }
+    const data = await res.json();
+    console.log('[lastfm] ok, keys:', Object.keys(data));
+    return data;
+  } catch(e) {
+    console.error('[lastfm] fetch threw:', e);
+    throw e;
+  }
 }
 
 function getLfmImage(imgs) {
@@ -2427,19 +2441,20 @@ document.getElementById('musicSearch').addEventListener('input', e => {
   el.innerHTML = '<div class="music-results-empty">searching...</div>';
   searchTimer = setTimeout(async () => {
     try {
+      console.log('[music] searching for:', q);
       const tracks = await musicSearch(q);
+      console.log('[music] got tracks:', tracks.length);
       if (!tracks.length) { el.innerHTML = '<div class="music-results-empty">no results</div>'; return; }
       el.innerHTML = '';
       renderTrackList(el, tracks, true);
       enrichArt(tracks).then(enriched => { el.innerHTML = ''; renderTrackList(el, enriched, true); });
-      // Pre-warm: start fetching video IDs for top 3 results in background
       tracks.slice(0, 3).forEach(t => {
         const key = t.artist + '|' + t.name;
         if (!_videoIdCache[key]) findVideoId(t.artist, t.name).then(id => { if (id) _videoIdCache[key] = id; }).catch(() => {});
       });
     } catch(err) {
-      el.innerHTML = '<div class="music-results-empty">search failed — is LASTFM_API_KEY set?</div>';
       console.error('[music] search error:', err);
+      el.innerHTML = '<div class="music-results-empty" style="color:#f87171;font-size:10px;word-break:break-all;">error: ' + err.message + '</div>';
     }
   }, 350);
 });

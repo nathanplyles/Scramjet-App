@@ -3,31 +3,37 @@ importScripts("/scram/scramjet.all.js");
 const { ScramjetServiceWorker } = $scramjetLoadWorker();
 const scramjet = new ScramjetServiceWorker();
 
-self.addEventListener("install", (event) => {
-	self.skipWaiting();
-});
+self.addEventListener("install", () => self.skipWaiting());
 
 self.addEventListener("activate", (event) => {
 	event.waitUntil(
-		caches.keys().then((keys) =>
-			Promise.all(keys.map((key) => caches.delete(key)))
-		).then(() => self.clients.claim())
+		caches.keys()
+			.then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+			.then(() => self.clients.claim())
 	);
 });
 
 async function handleRequest(event) {
-	await scramjet.loadConfig();
-
 	const url = event.request.url;
+	const origin = self.location.origin;
+
+	if (event.request.mode === "navigate") return fetch(event.request);
+	if (url.startsWith(origin + "/")) return fetch(event.request);
+
 	if (
 		url.includes("youtube.com/iframe_api") ||
 		url.includes("ytimg.com") ||
 		url.includes("youtube.com/embed") ||
 		url.includes("cdn.jsdelivr.net") ||
 		url.includes("googlevideo.com") ||
-		url.includes("googleusercontent.com") ||
-		url.startsWith(self.location.origin + "/api/")
+		url.includes("googleusercontent.com")
 	) {
+		return fetch(event.request);
+	}
+
+	try {
+		await scramjet.loadConfig();
+	} catch (e) {
 		return fetch(event.request);
 	}
 

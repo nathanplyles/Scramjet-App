@@ -1246,7 +1246,8 @@ a, button, input, select, textarea, label, [role="button"] { cursor: none !impor
     <button class="gv-btn" id="gameNewTab">↗ new tab</button>
     <button class="gv-btn" id="gameClose">✕ close</button>
   </div>
-  <iframe id="gameFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-popups allow-modals" allowfullscreen></iframe>
+  <div id="gameFrameWrapper" style="position:absolute;inset:0;width:100%;height:100%;"></div>
+  <iframe id="gameFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-popups allow-modals" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;"></iframe>
 </div>
 
 <!-- ══ MUSIC SCREEN ══ -->
@@ -2095,35 +2096,57 @@ async function openGame(zone) {
   const rawUrl = zone.url.startsWith('http')
     ? zone.url
     : zone.url.replace('{HTML_URL}', HTML_URL).replace('{COVER_URL}', COVER_URL);
-  // Store raw URL for new tab
+  // Store raw URL for new tab button
   frame.dataset.rawUrl = rawUrl;
-  // Route through scramjet so games work through the proxy
+  // Use scramjet createFrame to proxy the game
   const scramjet = window._scramjet;
+  frame.src = '';
+  frame.innerHTML = '';
   if (scramjet) {
-    frame.src = '';
-    // Use scramjet encode to proxy the game URL
     try {
-      frame.src = scramjet.config.prefix + encodeURIComponent(rawUrl);
+      const sjFrame = scramjet.createFrame();
+      sjFrame.frame.style.cssText = 'width:100%;height:100%;border:none;position:absolute;inset:0;';
+      // Replace the iframe with a div containing the scramjet frame
+      const wrapper = document.getElementById('gameFrameWrapper');
+      if (wrapper) {
+        wrapper.innerHTML = '';
+        wrapper.appendChild(sjFrame.frame);
+      } else {
+        frame.parentNode.insertBefore(sjFrame.frame, frame);
+        frame.style.display = 'none';
+      }
+      sjFrame.go(rawUrl);
+      viewer._sjFrame = sjFrame;
+      return;
     } catch(e) {
-      frame.src = rawUrl;
+      console.warn('[game] scramjet failed, loading direct:', e);
     }
-  } else {
-    frame.src = rawUrl;
   }
+  frame.style.display = '';
+  frame.src = rawUrl;
 }
 
 document.getElementById('gameClose').addEventListener('click', () => {
-  document.getElementById('gameViewer').classList.remove('open');
+  const viewer = document.getElementById('gameViewer');
+  viewer.classList.remove('open');
   document.getElementById('gameFrame').src = '';
+  document.getElementById('gameFrame').style.display = '';
+  const wrapper = document.getElementById('gameFrameWrapper');
+  if (wrapper) wrapper.innerHTML = '';
+  viewer._sjFrame = null;
 });
 document.getElementById('gameFullscreen').addEventListener('click', () => {
   document.getElementById('gameFrame').requestFullscreen?.();
 });
 document.getElementById('gameNewTab').addEventListener('click', () => {
   const rawUrl = document.getElementById('gameFrame').dataset.rawUrl || document.getElementById('gameFrame').src;
-  // Close game viewer and open in browser tab
+  if (!rawUrl) return;
+  // Close game viewer then open in in-app browser tab (proxied)
   document.getElementById('gameViewer').classList.remove('open');
   document.getElementById('gameFrame').src = '';
+  document.getElementById('gameFrame').style.display = '';
+  const wrapper = document.getElementById('gameFrameWrapper');
+  if (wrapper) wrapper.innerHTML = '';
   navigate('browser');
   createTab(rawUrl);
 });

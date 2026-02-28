@@ -93,7 +93,7 @@ fastify.get("/api/ytSearch", async (request, reply) => {
 // ── YouTube audio via yt-dlp ───────────────────────────────────────────
 import { spawn } from "node:child_process";
 
-const YT_DLP_ARGS = ["-f", "bestaudio/webm,bestaudio/mp4,bestaudio", "--get-url", "--no-playlist", "--no-warnings", "--cookies", "/app/cookies.txt", "--extractor-args", "youtube:player_client=web,web_creator", "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"];
+const YT_DLP_ARGS = ["-f", "bestaudio*", "--get-url", "--no-playlist", "--no-warnings", "--cookies", "/app/cookies.txt", "--extractor-args", "youtube:player_client=web,web_creator", "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"];
 
 function trySpawn(cmd, args, videoId) {
 	return new Promise((resolve, reject) => {

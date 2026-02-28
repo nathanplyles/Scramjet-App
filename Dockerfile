@@ -6,8 +6,7 @@ RUN apk add --no-cache python3 py3-pip
 
 RUN pip3 install yt-dlp --break-system-packages --root-user-action=ignore
 
-# Pre-download the EJS challenge solver so it's available at runtime
-RUN yt-dlp --remote-components ejs:github --skip-download "https://www.youtube.com/watch?v=jNQXAC9IVRw" || true
+RUN yt-dlp --js-runtimes node --remote-components ejs:github --skip-download "https://www.youtube.com/watch?v=jNQXAC9IVRw"
 
 RUN npm install -g pnpm
 

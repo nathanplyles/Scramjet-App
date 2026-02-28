@@ -1845,6 +1845,12 @@ document.querySelectorAll('.bg-option').forEach(o=>o.addEventListener('click',()
 let currentScreen = 'home';
 function navigate(screenId) {
   if (screenId === currentScreen) return;
+  // Auto-close game viewer when switching screens
+  const gameViewer = document.getElementById('gameViewer');
+  if (gameViewer && gameViewer.classList.contains('open')) {
+    gameViewer.classList.remove('open');
+    document.getElementById('gameFrame').src = '';
+  }
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const target = document.getElementById(`screen-${screenId}`);
   if (target) { target.classList.add('active'); currentScreen = screenId; }
@@ -2086,10 +2092,23 @@ async function openGame(zone) {
   const viewer = document.getElementById('gameViewer');
   const frame = document.getElementById('gameFrame');
   viewer.classList.add('open');
-  if (zone.url.startsWith('http')) {
-    frame.src = zone.url;
+  const rawUrl = zone.url.startsWith('http')
+    ? zone.url
+    : zone.url.replace('{HTML_URL}', HTML_URL).replace('{COVER_URL}', COVER_URL);
+  // Store raw URL for new tab
+  frame.dataset.rawUrl = rawUrl;
+  // Route through scramjet so games work through the proxy
+  const scramjet = window._scramjet;
+  if (scramjet) {
+    frame.src = '';
+    // Use scramjet encode to proxy the game URL
+    try {
+      frame.src = scramjet.config.prefix + encodeURIComponent(rawUrl);
+    } catch(e) {
+      frame.src = rawUrl;
+    }
   } else {
-    frame.src = zone.url.replace('{HTML_URL}', HTML_URL).replace('{COVER_URL}', COVER_URL);
+    frame.src = rawUrl;
   }
 }
 
@@ -2101,7 +2120,12 @@ document.getElementById('gameFullscreen').addEventListener('click', () => {
   document.getElementById('gameFrame').requestFullscreen?.();
 });
 document.getElementById('gameNewTab').addEventListener('click', () => {
-  window.open(document.getElementById('gameFrame').src, '_blank');
+  const rawUrl = document.getElementById('gameFrame').dataset.rawUrl || document.getElementById('gameFrame').src;
+  // Close game viewer and open in browser tab
+  document.getElementById('gameViewer').classList.remove('open');
+  document.getElementById('gameFrame').src = '';
+  navigate('browser');
+  createTab(rawUrl);
 });
 
 document.getElementById('gamesSearch').addEventListener('input', e => {

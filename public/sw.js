@@ -3,10 +3,21 @@ importScripts("/scram/scramjet.all.js");
 const { ScramjetServiceWorker } = $scramjetLoadWorker();
 const scramjet = new ScramjetServiceWorker();
 
+self.addEventListener("install", (event) => {
+	self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+	event.waitUntil(
+		caches.keys().then((keys) =>
+			Promise.all(keys.map((key) => caches.delete(key)))
+		).then(() => self.clients.claim())
+	);
+});
+
 async function handleRequest(event) {
 	await scramjet.loadConfig();
 
-	// Don't intercept these — let them pass through directly
 	const url = event.request.url;
 	if (
 		url.includes("youtube.com/iframe_api") ||

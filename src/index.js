@@ -23,7 +23,7 @@ const fastify = Fastify({
 		return createServer()
 			.on("request", (req, res) => {
 				res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
-				res.setHeader("Cross-Origin-Embedder-Policy", "credentialless");
+				res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
 				handler(req, res);
 			})
 			.on("upgrade", (req, socket, head) => {

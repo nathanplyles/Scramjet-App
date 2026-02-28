@@ -2,16 +2,14 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Install python, pip, curl, unzip for yt-dlp and deno
-RUN apk add --no-cache python3 py3-pip curl unzip
-
-# Install deno (JS runtime for yt-dlp)
-RUN curl -fsSL https://deno.land/install.sh | sh
-ENV DENO_INSTALL="/root/.deno"
-ENV PATH="${DENO_INSTALL}/bin:${PATH}"
+# Install python and pip for yt-dlp
+RUN apk add --no-cache python3 py3-pip
 
 # Install yt-dlp
 RUN pip3 install yt-dlp --break-system-packages
+
+# Make sure node is findable by yt-dlp
+RUN ln -sf $(which node) /usr/local/bin/node
 
 RUN npm install -g pnpm
 

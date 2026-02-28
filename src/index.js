@@ -94,20 +94,26 @@ fastify.get("/api/ytSearch", async (request, reply) => {
 import { spawn } from "node:child_process";
 
 const COOKIES_PATH = process.env.COOKIES_PATH || (process.env.RENDER ? "/app/cookies.txt" : new URL("../../cookies.txt", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1"));
-const YT_DLP_ARGS = ["-f", "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best", "--get-url", "--no-playlist", "--no-warnings", "--js-runtimes", "node", "--remote-components", "ejs:github", "--cookies", COOKIES_PATH];
+const YT_DLP_ARGS = ["--get-url", "--no-playlist", "--no-warnings", "--cookies", COOKIES_PATH];
 
 function trySpawn(cmd, args, videoId) {
 	return new Promise((resolve, reject) => {
-		const proc = spawn(cmd, [...args, "https://www.youtube.com/watch?v=" + videoId], { shell: false });
+		const fullArgs = [...args, "https://www.youtube.com/watch?v=" + videoId];
+		console.log(`[yt-dlp] spawning: ${cmd} ${fullArgs.join(" ")}`);
+		const proc = spawn(cmd, fullArgs, { shell: false });
 		let out = "", err = "";
 		proc.stdout.on("data", d => out += d);
 		proc.stderr.on("data", d => err += d);
 		proc.on("close", code => {
+			console.log(`[yt-dlp] exit ${code}, stdout: ${out.slice(0,200)}, stderr: ${err.slice(0,200)}`);
 			const url = out.trim().split("\n")[0].trim();
 			if (code === 0 && url.startsWith("http")) resolve(url);
 			else reject(Object.assign(new Error(err.trim().slice(0, 300) || "exit " + code), { isEnoent: false }));
 		});
-		proc.on("error", e => reject(Object.assign(new Error("ENOENT"), { isEnoent: true })));
+		proc.on("error", e => {
+			console.log(`[yt-dlp] spawn error: ${e.message}`);
+			reject(Object.assign(new Error("ENOENT"), { isEnoent: true }));
+		});
 		setTimeout(() => { try { proc.kill(); } catch {} reject(new Error("timeout")); }, 25000);
 	});
 }
@@ -253,31 +259,20 @@ const AI_PROVIDERS = [
 	},
 ];
 
-const PROVIDER_MODEL_OVERRIDES = {
-	cerebras: { "llama-3.3-70b": "llama-3.3-70b", "llama-3.1-8b": "llama-3.1-8b" },
-	groq: { "llama-3.3-70b-versatile": "llama-3.3-70b-versatile", "llama-3.1-8b-instant": "llama-3.1-8b-instant", "mixtral-8x7b-32768": "mixtral-8x7b-32768", "gemma2-9b-it": "gemma2-9b-it" },
-	gemini: { "gemini-2.0-flash-lite": "gemini-2.0-flash-lite", "gemini-2.0-flash": "gemini-2.0-flash" },
-};
-
-async function tryAIProvider(provider, messages, maxTokens, modelOverride) {
+async function tryAIProvider(provider, messages, maxTokens) {
 	const key = process.env[provider.envKey];
 	if (!key) throw new Error("no key configured");
-	const model = modelOverride || provider.model;
-	console.log(`[ai] ${provider.name} using model: ${model}`);
 	const res = await fetch(provider.url, {
 		method: "POST",
 		headers: {
 			"Authorization": "Bearer " + key,
 			"Content-Type": "application/json",
 		},
-		body: JSON.stringify({ model, messages, max_tokens: maxTokens, stream: false }),
+		body: JSON.stringify({ model: provider.model, messages, max_tokens: maxTokens, stream: false }),
 		signal: AbortSignal.timeout(20000),
 	});
 	if (res.status === 429 || res.status === 503) throw new Error("quota/" + res.status);
-	if (!res.ok) {
-		const errText = await res.text().catch(() => "");
-		throw new Error("http/" + res.status + " " + errText.slice(0, 100));
-	}
+	if (!res.ok) throw new Error("http/" + res.status);
 	const data = await res.json();
 	const content = data?.choices?.[0]?.message?.content;
 	if (!content) throw new Error("empty response");
@@ -289,19 +284,11 @@ fastify.post("/api/ai", async (request, reply) => {
 		const body = request.body;
 		if (!body || !body.messages) return reply.code(400).send({ error: "messages required" });
 		const maxTokens = Math.min(body.max_tokens || 1024, 4096);
-		const requestedProvider = body.provider;
-		const requestedModel = body.model;
-
-		const ordered = requestedProvider
-			? [AI_PROVIDERS.find(p => p.name === requestedProvider), ...AI_PROVIDERS.filter(p => p.name !== requestedProvider)].filter(Boolean)
-			: AI_PROVIDERS;
-
 		let lastErr;
-		for (const provider of ordered) {
+		for (const provider of AI_PROVIDERS) {
 			try {
-				const modelOverride = (requestedProvider === provider.name && requestedModel) ? requestedModel : null;
 				console.log(`[ai] trying ${provider.name}...`);
-				const result = await tryAIProvider(provider, body.messages, maxTokens, modelOverride);
+				const result = await tryAIProvider(provider, body.messages, maxTokens);
 				console.log(`[ai] success via ${provider.name}`);
 				return reply.send({ content: result.content, provider: result.provider });
 			} catch (e) {

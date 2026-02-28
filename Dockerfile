@@ -6,7 +6,7 @@ RUN apk add --no-cache python3 py3-pip
 
 RUN pip3 install yt-dlp --break-system-packages --root-user-action=ignore
 
-RUN yt-dlp --js-runtimes node --remote-components ejs:github --skip-download "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+RUN yt-dlp --js-runtimes node --remote-components ejs:github --skip-download "https://www.youtube.com/watch?v=jNQXAC9IVRw" || true
 
 RUN npm install -g pnpm
 

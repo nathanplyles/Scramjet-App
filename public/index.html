@@ -852,6 +852,42 @@ a, button, input, select, textarea, label, [role="button"] { cursor: none !impor
 .music-ctx-item.danger:hover { color: #ff6b6b; background: rgba(255,80,80,0.07); }
 .music-ctx-sep { height: 1px; background: rgba(255,255,255,0.06); margin: 4px 0; }
 
+/* ── LYRICS ── */
+.lyrics-panel {
+  flex: 1; overflow-y: auto; padding: 12px 12px 16px;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.06) transparent;
+  display: flex; flex-direction: column;
+}
+.lyrics-empty {
+  font-size: 11px; color: #2a2a2a; text-align: center;
+  padding: 48px 16px; letter-spacing: 0.06em; line-height: 1.8;
+}
+.lyrics-loading {
+  font-size: 10px; color: #333; text-align: center;
+  padding: 32px 16px; letter-spacing: 0.08em;
+  animation: aiPulse 1.2s ease-in-out infinite;
+}
+.lyrics-plain {
+  font-size: 12px; color: #555; line-height: 2;
+  letter-spacing: 0.02em; white-space: pre-wrap;
+  padding: 4px 2px;
+}
+.lyrics-line {
+  display: block; padding: 3px 6px; border-radius: 5px;
+  font-size: 12px; color: #444; line-height: 1.9;
+  transition: color 0.3s, background 0.3s;
+  cursor: default;
+}
+.lyrics-line.active {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.07);
+}
+.lyrics-line.past { color: #555; }
+.lyrics-instrumental {
+  font-size: 11px; color: #333; text-align: center;
+  padding: 40px 16px; letter-spacing: 0.1em; font-style: italic;
+}
+
 /* ── AI CHAT APP ── */
 #screen-account { padding: 0 !important; }
 .ai-app {
@@ -1266,12 +1302,18 @@ a, button, input, select, textarea, label, [role="button"] { cursor: none !impor
       <div class="music-sidebar-tabs">
         <button class="music-tab active" data-mtab="search">search</button>
         <button class="music-tab" data-mtab="queue">queue</button>
+        <button class="music-tab" data-mtab="lyrics">lyrics</button>
       </div>
       <div class="music-tab-panel active" id="mtab-search">
         <div class="music-results" id="musicResults"><div class="music-results-empty">search for a song or artist</div></div>
       </div>
       <div class="music-tab-panel" id="mtab-queue">
         <div class="music-queue-list" id="musicQueueList"><div class="music-results-empty">queue is empty</div></div>
+      </div>
+      <div class="music-tab-panel" id="mtab-lyrics">
+        <div class="lyrics-panel" id="lyricsPanel">
+          <div class="lyrics-empty">play a song to see lyrics</div>
+        </div>
       </div>
       <!-- Playlists -->
       <div class="music-sidebar-section">
@@ -1379,56 +1421,26 @@ a, button, input, select, textarea, label, [role="button"] { cursor: none !impor
       <div class="ai-sidebar-section">model</div>
       <div class="ai-model-wrap">
         <select class="ai-model-select" id="aiModelSelect">
-          <optgroup label="OpenAI">
-            <option value="openai/gpt-4o">GPT-4o</option>
-            <option value="openai/gpt-4o-mini">GPT-4o mini</option>
-            <option value="openai/o3-mini">o3-mini</option>
-            <option value="openai/o4-mini">o4-mini</option>
+          <optgroup label="Cerebras (fastest)">
+            <option value="cerebras/llama-3.3-70b">Llama 3.3 70B</option>
+            <option value="cerebras/llama-3.1-8b">Llama 3.1 8B</option>
           </optgroup>
-          <optgroup label="Anthropic">
-            <option value="anthropic/claude-sonnet-4-5">Claude Sonnet 4.5</option>
-            <option value="anthropic/claude-3-5-haiku">Claude 3.5 Haiku</option>
-            <option value="anthropic/claude-opus-4">Claude Opus 4</option>
+          <optgroup label="Groq (fast)">
+            <option value="groq/llama-3.3-70b-versatile">Llama 3.3 70B</option>
+            <option value="groq/llama-3.1-8b-instant">Llama 3.1 8B</option>
+            <option value="groq/mixtral-8x7b-32768">Mixtral 8x7B</option>
+            <option value="groq/gemma2-9b-it">Gemma 2 9B</option>
           </optgroup>
-          <optgroup label="Google">
-            <option value="google/gemini-2.5-pro-preview">Gemini 2.5 Pro</option>
-            <option value="google/gemini-2.0-flash-001">Gemini 2.0 Flash</option>
-            <option value="google/gemini-flash-1.5">Gemini 1.5 Flash</option>
-          </optgroup>
-          <optgroup label="Meta">
-            <option value="meta-llama/llama-4-maverick">Llama 4 Maverick</option>
-            <option value="meta-llama/llama-4-scout">Llama 4 Scout</option>
-            <option value="meta-llama/llama-3.3-70b-instruct">Llama 3.3 70B</option>
-            <option value="meta-llama/llama-3.1-8b-instruct:free">Llama 3.1 8B (free)</option>
-          </optgroup>
-          <optgroup label="Mistral">
-            <option value="mistralai/mistral-large">Mistral Large</option>
-            <option value="mistralai/mistral-nemo">Mistral Nemo</option>
-            <option value="mistralai/mixtral-8x7b-instruct">Mixtral 8x7B</option>
-          </optgroup>
-          <optgroup label="DeepSeek">
-            <option value="deepseek/deepseek-chat-v3-0324">DeepSeek V3</option>
-            <option value="deepseek/deepseek-r1">DeepSeek R1</option>
-            <option value="deepseek/deepseek-r1-distill-llama-70b">DeepSeek R1 Llama 70B</option>
-          </optgroup>
-          <optgroup label="xAI">
-            <option value="x-ai/grok-3-beta">Grok 3</option>
-            <option value="x-ai/grok-3-mini-beta">Grok 3 Mini</option>
-          </optgroup>
-          <optgroup label="Free">
-            <option value="qwen/qwen3-235b-a22b:free">Qwen3 235B (free)</option>
-            <option value="mistralai/mistral-7b-instruct:free">Mistral 7B (free)</option>
-            <option value="google/gemma-3-27b-it:free">Gemma 3 27B (free)</option>
-            <option value="microsoft/phi-4-reasoning-plus:free">Phi-4 Reasoning (free)</option>
+          <optgroup label="Gemini">
+            <option value="gemini/gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite</option>
+            <option value="gemini/gemini-2.0-flash">Gemini 2.0 Flash</option>
           </optgroup>
         </select>
       </div>
-      <div class="ai-sidebar-section">api key <span style="color:#2a2a2a;font-size:9px;">(openrouter)</span></div>
-      <div style="padding:0 12px 8px;">
-        <input class="ai-key-input" id="aiKeyInput" type="password" placeholder="sk-or-..." autocomplete="off" spellcheck="false">
-        <div style="font-size:9px;color:#2a2a2a;margin-top:4px;letter-spacing:0.04em;">get free key at openrouter.ai</div>
+      <div class="ai-sidebar-section" style="display:flex;align-items:center;justify-content:space-between;">
+        history
+        <button id="aiClearBtn" style="background:none;border:none;color:#2a2a2a;font-size:10px;cursor:none;font-family:var(--font-mono);letter-spacing:0.04em;transition:color 0.15s;" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='#2a2a2a'">clear</button>
       </div>
-      <div class="ai-sidebar-section">history</div>
       <div class="ai-convo-list" id="aiConvoList"></div>
     </div>
 
@@ -1438,7 +1450,7 @@ a, button, input, select, textarea, label, [role="button"] { cursor: none !impor
         <div class="ai-welcome">
           <div class="ai-welcome-icon">◈</div>
           <div class="ai-welcome-title">what can i help with?</div>
-          <div class="ai-welcome-sub">choose a model and start chatting</div>
+          <div class="ai-welcome-sub">powered by cerebras · groq · gemini</div>
         </div>
       </div>
       <div class="ai-input-wrap">
@@ -2551,6 +2563,7 @@ async function playTrack(track) {
     bgEl.style.backgroundImage = ''; bgEl.classList.remove('on');
     document.getElementById('musicArtPlaceholder').classList.remove('hidden');
   }
+  loadLyrics(track);
   // Mirror queue to right panel
   renderQueueRight();
   document.querySelectorAll('.music-result-row').forEach(r =>
@@ -2801,22 +2814,26 @@ let aiConversations = JSON.parse(localStorage.getItem('oblivionAiConvos') || '[]
 let aiActiveId = null;
 let aiStreaming = false;
 
+const AI_MODEL_MAP = {
+  'cerebras/llama-3.3-70b':       { provider: 'cerebras', model: 'llama-3.3-70b' },
+  'cerebras/llama-3.1-8b':        { provider: 'cerebras', model: 'llama-3.1-8b' },
+  'groq/llama-3.3-70b-versatile': { provider: 'groq',     model: 'llama-3.3-70b-versatile' },
+  'groq/llama-3.1-8b-instant':    { provider: 'groq',     model: 'llama-3.1-8b-instant' },
+  'groq/mixtral-8x7b-32768':      { provider: 'groq',     model: 'mixtral-8x7b-32768' },
+  'groq/gemma2-9b-it':            { provider: 'groq',     model: 'gemma2-9b-it' },
+  'gemini/gemini-2.0-flash-lite':  { provider: 'gemini',   model: 'gemini-2.0-flash-lite' },
+  'gemini/gemini-2.0-flash':       { provider: 'gemini',   model: 'gemini-2.0-flash' },
+};
+
 function saveAiConvos() { localStorage.setItem('oblivionAiConvos', JSON.stringify(aiConversations)); }
 function getActiveConvo() { return aiConversations.find(c => c.id === aiActiveId); }
 
 function aiInit() {
   document.getElementById('aiApp').classList.add('ready');
-  const savedKey = localStorage.getItem('oblivionOpenRouterKey') || '';
-  const savedModel = localStorage.getItem('oblivionAiModel') || 'google/gemini-2.0-flash-001';
-  document.getElementById('aiKeyInput').value = savedKey;
+  const savedModel = localStorage.getItem('oblivionAiModel') || 'cerebras/llama-3.3-70b';
   const sel = document.getElementById('aiModelSelect');
-  if (sel) { sel.value = savedModel; }
-  document.getElementById('aiKeyInput').addEventListener('change', e => {
-    localStorage.setItem('oblivionOpenRouterKey', e.target.value.trim());
-  });
-  sel?.addEventListener('change', e => {
-    localStorage.setItem('oblivionAiModel', e.target.value);
-  });
+  if (sel) sel.value = savedModel;
+  sel?.addEventListener('change', e => localStorage.setItem('oblivionAiModel', e.target.value));
   renderAiConvoList();
 }
 
@@ -2857,13 +2874,12 @@ function newConvo() {
     <div class="ai-welcome">
       <div class="ai-welcome-icon">◈</div>
       <div class="ai-welcome-title">what can i help with?</div>
-      <div class="ai-welcome-sub">choose a model and start chatting</div>
+      <div class="ai-welcome-sub">powered by cerebras · groq · gemini</div>
     </div>`;
 }
 
 function appendMessage(role, content) {
   const msgs = document.getElementById('aiMessages');
-  // Remove welcome screen on first message
   const welcome = msgs.querySelector('.ai-welcome');
   if (welcome) welcome.remove();
   const div = document.createElement('div');
@@ -2883,12 +2899,11 @@ function escAi(s) {
 
 async function aiSend() {
   if (aiStreaming) return;
-  const key = document.getElementById('aiKeyInput').value.trim() || localStorage.getItem('oblivionOpenRouterKey');
-  if (!key) { toast('add your OpenRouter API key in AI settings', 'error', 3000); return; }
   const input = document.getElementById('aiInput');
   const text = input.value.trim();
   if (!text) return;
-  const model = document.getElementById('aiModelSelect').value;
+  const selVal = document.getElementById('aiModelSelect').value;
+  const modelInfo = AI_MODEL_MAP[selVal] || { provider: 'cerebras', model: 'llama-3.3-70b' };
 
   if (!aiActiveId) newConvo();
   const convo = getActiveConvo();
@@ -2899,7 +2914,6 @@ async function aiSend() {
   saveAiConvos(); renderAiConvoList();
   appendMessage('user', text);
 
-  // Thinking indicator
   const msgs = document.getElementById('aiMessages');
   const thinking = document.createElement('div');
   thinking.className = 'ai-msg-thinking';
@@ -2911,53 +2925,35 @@ async function aiSend() {
   document.getElementById('aiSendBtn').disabled = true;
 
   try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const res = await fetch('/api/ai', {
       method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + key,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': location.origin,
-        'X-Title': 'oblivion',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model,
         messages: convo.messages,
-        stream: true,
+        provider: modelInfo.provider,
+        model: modelInfo.model,
+        max_tokens: 2048,
       }),
     });
 
+    thinking.remove();
+
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error?.message || 'API error ' + res.status);
+      throw new Error(err.error || 'server error ' + res.status);
     }
 
-    thinking.remove();
-    let fullText = '';
-    const bubble = appendMessage('assistant', '');
+    const data = await res.json();
+    const content = data.content || '';
+    const usedProvider = data.provider || modelInfo.provider;
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buf = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-      const lines = buf.split('\n');
-      buf = lines.pop();
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const data = line.slice(6).trim();
-        if (data === '[DONE]') break;
-        try {
-          const json = JSON.parse(data);
-          const delta = json.choices?.[0]?.delta?.content || '';
-          if (delta) { fullText += delta; bubble.innerHTML = escAi(fullText); msgs.scrollTop = msgs.scrollHeight; }
-        } catch {}
-      }
-    }
-
-    convo.messages.push({ role: 'assistant', content: fullText });
+    appendMessage('assistant', content);
+    convo.messages.push({ role: 'assistant', content });
     saveAiConvos();
+
+    if (usedProvider !== modelInfo.provider) {
+      toast('responded via ' + usedProvider + ' (fallback)', 'info', 2500);
+    }
   } catch(e) {
     thinking.remove();
     appendMessage('assistant', '⚠ ' + e.message);
@@ -2978,11 +2974,122 @@ document.getElementById('aiInput')?.addEventListener('input', function() {
   this.style.height = Math.min(this.scrollHeight, 180) + 'px';
 });
 document.getElementById('aiNewBtn')?.addEventListener('click', newConvo);
+document.getElementById('aiClearBtn')?.addEventListener('click', () => {
+  aiConversations = [];
+  aiActiveId = null;
+  saveAiConvos();
+  renderAiConvoList();
+  document.getElementById('aiMessages').innerHTML = `
+    <div class="ai-welcome">
+      <div class="ai-welcome-icon">◈</div>
+      <div class="ai-welcome-title">what can i help with?</div>
+      <div class="ai-welcome-sub">powered by cerebras · groq · gemini</div>
+    </div>`;
+});
 
 let aiInited = false;
 document.querySelectorAll('.taskbar-btn[data-screen="account"],.app-icon[data-screen="account"]').forEach(el => {
   el.addEventListener('click', () => { if (!aiInited) { aiInited = true; aiInit(); } }, true);
 });
+
+// ── LYRICS ─────────────────────────────────────────────────────────────
+let lyricsCurrentTrack = null;
+let lyricsSynced = [];
+let lyricsAnimId = null;
+
+function parseLrc(lrc) {
+  if (!lrc) return [];
+  return lrc.split('\n').map(line => {
+    const m = line.match(/^\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/);
+    if (!m) return null;
+    const time = parseInt(m[1]) * 60 + parseFloat(m[2] + '.' + m[3]);
+    return { time, text: m[4].trim() };
+  }).filter(Boolean);
+}
+
+async function loadLyrics(track) {
+  if (!track) return;
+  lyricsCurrentTrack = track.id;
+  const panel = document.getElementById('lyricsPanel');
+  if (!panel) return;
+  panel.innerHTML = '<div class="lyrics-loading">loading lyrics...</div>';
+
+  try {
+    const params = new URLSearchParams({ track: track.name });
+    if (track.artist) params.set('artist', track.artist);
+    const res = await fetch('/api/lyrics?' + params.toString());
+
+    if (lyricsCurrentTrack !== track.id) return;
+
+    if (res.status === 404) {
+      panel.innerHTML = '<div class="lyrics-empty">no lyrics found</div>';
+      return;
+    }
+
+    const data = await res.json();
+    if (data.error) { panel.innerHTML = '<div class="lyrics-empty">no lyrics found</div>'; return; }
+    if (data.instrumental) { panel.innerHTML = '<div class="lyrics-instrumental">♪ instrumental</div>'; return; }
+
+    if (data.synced) {
+      lyricsSynced = parseLrc(data.synced);
+      renderSyncedLyrics(panel);
+      startLyricsSync();
+    } else if (data.plain) {
+      lyricsSynced = [];
+      stopLyricsSync();
+      panel.innerHTML = '<div class="lyrics-plain">' + escAi(data.plain) + '</div>';
+    } else {
+      panel.innerHTML = '<div class="lyrics-empty">no lyrics found</div>';
+    }
+  } catch(e) {
+    if (lyricsCurrentTrack === track.id) {
+      panel.innerHTML = '<div class="lyrics-empty">lyrics unavailable</div>';
+    }
+  }
+}
+
+function renderSyncedLyrics(panel) {
+  panel.innerHTML = '';
+  lyricsSynced.forEach((line, i) => {
+    const el = document.createElement('span');
+    el.className = 'lyrics-line';
+    el.dataset.idx = i;
+    el.textContent = line.text || '♪';
+    panel.appendChild(el);
+  });
+}
+
+function startLyricsSync() {
+  stopLyricsSync();
+  let lastIdx = -1;
+  function tick() {
+    if (!audioEl || !lyricsSynced.length) { lyricsAnimId = requestAnimationFrame(tick); return; }
+    const cur = audioEl.currentTime;
+    let idx = -1;
+    for (let i = lyricsSynced.length - 1; i >= 0; i--) {
+      if (cur >= lyricsSynced[i].time) { idx = i; break; }
+    }
+    if (idx !== lastIdx) {
+      lastIdx = idx;
+      const panel = document.getElementById('lyricsPanel');
+      if (!panel) return;
+      panel.querySelectorAll('.lyrics-line').forEach((el, i) => {
+        el.classList.toggle('active', i === idx);
+        el.classList.toggle('past', i < idx);
+      });
+      if (idx >= 0) {
+        const activeEl = panel.querySelector('.lyrics-line.active');
+        if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+    lyricsAnimId = requestAnimationFrame(tick);
+  }
+  lyricsAnimId = requestAnimationFrame(tick);
+}
+
+function stopLyricsSync() {
+  if (lyricsAnimId) { cancelAnimationFrame(lyricsAnimId); lyricsAnimId = null; }
+}
 
 </script>
 </body>

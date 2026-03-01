@@ -94,7 +94,13 @@ fastify.get("/api/ytSearch", async (request, reply) => {
 import { spawn } from "node:child_process";
 
 const COOKIES_PATH = process.env.COOKIES_PATH || (process.env.RENDER ? "/app/cookies.txt" : new URL("../../cookies.txt", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1"));
-const YT_DLP_ARGS = ["--get-url", "--no-playlist", "--no-warnings", "--cookies", COOKIES_PATH];
+
+const BASE_ARGS = ["--get-url", "--no-playlist", "--no-warnings", "--cookies", COOKIES_PATH];
+const FORMAT_ATTEMPTS = [
+	["-f", "bestaudio"],
+	["-f", "worstaudio"],
+	[],
+];
 
 function trySpawn(cmd, args, videoId) {
 	return new Promise((resolve, reject) => {
@@ -105,41 +111,46 @@ function trySpawn(cmd, args, videoId) {
 		proc.stdout.on("data", d => out += d);
 		proc.stderr.on("data", d => err += d);
 		proc.on("close", code => {
-			console.log(`[yt-dlp] exit ${code}, stdout: ${out.slice(0,200)}, stderr: ${err.slice(0,200)}`);
-			const url = out.trim().split("\n")[0].trim();
-			if (code === 0 && url.startsWith("http")) resolve(url);
+			console.log(`[yt-dlp] exit ${code} | stdout: ${out.slice(0,120)} | stderr: ${err.slice(0,200)}`);
+			const url = out.trim().split("\n").find(l => l.startsWith("http")) || "";
+			if (code === 0 && url) resolve(url);
 			else reject(Object.assign(new Error(err.trim().slice(0, 300) || "exit " + code), { isEnoent: false }));
 		});
 		proc.on("error", e => {
 			console.log(`[yt-dlp] spawn error: ${e.message}`);
 			reject(Object.assign(new Error("ENOENT"), { isEnoent: true }));
 		});
-		setTimeout(() => { try { proc.kill(); } catch {} reject(new Error("timeout")); }, 25000);
+		setTimeout(() => { try { proc.kill("SIGKILL"); } catch {} reject(new Error("timeout")); }, 30000);
 	});
 }
 
 async function ytdlpGetUrl(videoId) {
-	const attempts = [
-		{ cmd: "py",      args: ["-m", "yt_dlp", ...YT_DLP_ARGS] },
-		{ cmd: "yt-dlp",  args: YT_DLP_ARGS },
-		{ cmd: "python3", args: ["-m", "yt_dlp", ...YT_DLP_ARGS] },
-		{ cmd: "python",  args: ["-m", "yt_dlp", ...YT_DLP_ARGS] },
+	const cmds = [
+		{ cmd: "yt-dlp",  prefix: [] },
+		{ cmd: "python3", prefix: ["-m", "yt_dlp"] },
+		{ cmd: "python",  prefix: ["-m", "yt_dlp"] },
+		{ cmd: "py",      prefix: ["-m", "yt_dlp"] },
 	];
+
+	let foundCmd = null;
 	let lastErr;
-	for (const { cmd, args } of attempts) {
-		try {
-			console.log(`[yt-dlp] trying: ${cmd} ${args.join(" ")} ${videoId}`);
-			const url = await trySpawn(cmd, args, videoId);
-			console.log(`[yt-dlp] got url from ${cmd}: ${url.slice(0, 80)}...`);
-			return url;
-		} catch (e) {
-			console.log(`[yt-dlp] ${cmd} failed: isEnoent=${e.isEnoent} msg=${e.message.slice(0,200)}`);
-			if (e.isEnoent) continue;
-			lastErr = e;
-			if (e.message.includes("not available") || e.message.includes("Private video")) throw e;
+
+	for (const { cmd, prefix } of cmds) {
+		for (const fmtArgs of FORMAT_ATTEMPTS) {
+			const args = [...prefix, ...fmtArgs, ...BASE_ARGS];
+			try {
+				console.log(`[yt-dlp] trying ${cmd} with fmt=[${fmtArgs.join(" ")||"default"}]`);
+				const url = await trySpawn(cmd, args, videoId);
+				console.log(`[yt-dlp] ✓ success: ${cmd} fmt=[${fmtArgs.join(" ")||"default"}] url=${url.slice(0,80)}`);
+				return url;
+			} catch (e) {
+				console.log(`[yt-dlp] ✗ ${cmd} fmt=[${fmtArgs.join(" ")||"default"}]: ${e.message.slice(0,150)}`);
+				if (e.isEnoent) break;
+				lastErr = e;
+			}
 		}
 	}
-	throw lastErr || new Error("yt-dlp not found — install with: pip install yt-dlp");
+	throw lastErr || new Error("yt-dlp not found");
 }
 
 fastify.get("/api/ytAudio/:videoId", async (request, reply) => {

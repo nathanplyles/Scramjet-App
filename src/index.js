@@ -90,67 +90,89 @@ fastify.get("/api/ytSearch", async (request, reply) => {
 	}
 });
 
-// ── YouTube audio via InnerTube IOS client ────────────────────────────
+// ── YouTube audio via yt-dlp ───────────────────────────────────────────
+import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "url";
+
 const _urlCache = new Map();
 
-async function innertubeGetAudio(videoId) {
+// Write cookies from env var OR find cookies.txt file
+import { writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+const _cookiesPath = (() => {
+	// First check env var (Render environment variable)
+	if (process.env.YT_COOKIES) {
+		const tmp = join(tmpdir(), "yt_cookies.txt");
+		writeFileSync(tmp, process.env.YT_COOKIES, "utf8");
+		console.log(`[yt-dlp] cookies: loaded from YT_COOKIES env var → ${tmp}`);
+		return tmp;
+	}
+	// Fall back to file
+	const candidates = [
+		"/app/cookies.txt",
+		fileURLToPath(new URL("../../cookies.txt", import.meta.url)).replace(/^\/([A-Z]:)/, "$1"),
+		"cookies.txt",
+	];
+	const found = candidates.find(p => { try { return existsSync(p); } catch { return false; } }) || null;
+	console.log(`[yt-dlp] cookies: ${found || "none"}`);
+	return found;
+})();
+
+const YT_DLP_ARGS = [
+	"-f", "140/251/139",
+	"--get-url",
+	"--no-playlist",
+	"--no-warnings",
+	"--js-runtimes", "node",
+	// Use browser cookies locally (always fresh), fall back to file on Render
+	...(process.env.RENDER
+		? (_cookiesPath ? ["--cookies", _cookiesPath] : [])
+		: ["--cookies-from-browser", "chrome"]
+	),
+];
+
+function trySpawn(cmd, videoId) {
+	return new Promise((resolve, reject) => {
+		const args = [...(cmd.includes("yt_dlp") ? ["-m", "yt_dlp"] : []), ...YT_DLP_ARGS, `https://www.youtube.com/watch?v=${videoId}`];
+		const bin = cmd.includes("yt_dlp") ? cmd.split(" ")[0] : cmd;
+		console.log(`[yt-dlp] spawning: ${bin} ${args.slice(0,4).join(" ")}...`);
+		const proc = spawn(bin, cmd.includes("yt_dlp") ? args : [...YT_DLP_ARGS, `https://www.youtube.com/watch?v=${videoId}`], { shell: false });
+		let out = "", err = "";
+		proc.stdout.on("data", d => out += d);
+		proc.stderr.on("data", d => err += d);
+		proc.on("close", code => {
+			const url = out.trim().split("\n")[0].trim();
+			if (code === 0 && url.startsWith("http")) resolve(url);
+			else reject(Object.assign(new Error(err.trim().slice(0, 300) || "exit " + code), { isEnoent: false }));
+		});
+		proc.on("error", e => reject(Object.assign(new Error("ENOENT"), { isEnoent: true })));
+		setTimeout(() => { try { proc.kill(); } catch {} reject(new Error("timeout")); }, 30000);
+	});
+}
+
+async function ytdlpGetUrl(videoId) {
 	const cached = _urlCache.get(videoId);
 	if (cached && cached.expires > Date.now()) {
-		console.log(`[yt] cache hit for ${videoId}`);
-		return cached;
+		console.log(`[yt-dlp] cache hit for ${videoId}`);
+		return cached.url;
 	}
-	console.log(`[yt] fetching via IOS client for ${videoId}`);
-	const res = await fetch("https://www.youtube.com/youtubei/v1/player?prettyPrint=false", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			"User-Agent": "com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 18_1_0 like Mac OS X;)",
-			"X-YouTube-Client-Name": "IOS",
-			"X-YouTube-Client-Version": "19.45.4",
-		},
-		body: JSON.stringify({
-			videoId,
-			context: {
-				client: {
-					clientName: "IOS",
-					clientVersion: "19.45.4",
-					deviceMake: "Apple",
-					deviceModel: "iPhone16,2",
-					osName: "iPhone",
-					osVersion: "18.1.0.22B83",
-				}
-			}
-		}),
-		signal: AbortSignal.timeout(10000),
-	});
-	const data = await res.json();
-	const status = data?.playabilityStatus?.status;
-	console.log(`[yt] playability: ${status}`);
-	if (status !== "OK") throw new Error("Video not playable: " + status);
-
-	const formats = [
-		...(data?.streamingData?.adaptiveFormats || []),
-		...(data?.streamingData?.formats || []),
-	];
-
-	const audioFormats = formats
-		.filter(f => f.mimeType?.startsWith("audio/") && f.url)
-		.sort((a, b) => (b.averageBitrate || b.bitrate || 0) - (a.averageBitrate || a.bitrate || 0));
-
-	if (!audioFormats.length) throw new Error("No audio formats found");
-
-	const best = audioFormats.find(f => f.itag === 140)
-		|| audioFormats.find(f => f.itag === 251)
-		|| audioFormats[0];
-
-	console.log(`[yt] ✓ itag=${best.itag} mime=${best.mimeType}`);
-	const result = {
-		url: best.url,
-		mime: best.mimeType?.split(";")[0] || "audio/mp4",
-		expires: Date.now() + 5 * 60 * 60 * 1000,
-	};
-	_urlCache.set(videoId, result);
-	return result;
+	const cmds = ["py -m yt_dlp", "yt-dlp", "python3 -m yt_dlp", "python -m yt_dlp"];
+	let lastErr;
+	for (const cmd of cmds) {
+		try {
+			const url = await trySpawn(cmd, videoId);
+			console.log(`[yt-dlp] ✓ got url via ${cmd}`);
+			_urlCache.set(videoId, { url, expires: Date.now() + 4 * 60 * 60 * 1000 });
+			return url;
+		} catch(e) {
+			if (e.isEnoent) continue;
+			lastErr = e;
+		}
+	}
+	throw lastErr || new Error("yt-dlp not found");
 }
 
 fastify.get("/api/ytAudio/:videoId", async (request, reply) => {
@@ -159,7 +181,7 @@ fastify.get("/api/ytAudio/:videoId", async (request, reply) => {
 		return reply.code(400).send({ error: "invalid videoId" });
 	}
 	try {
-		const { url: cdnUrl, mime } = await innertubeGetAudio(videoId);
+		const cdnUrl = await ytdlpGetUrl(videoId); const mime = "audio/mp4";
 		const rangeHeader = request.headers["range"];
 		const cdnRes = await fetch(cdnUrl, {
 			headers: {
@@ -168,7 +190,7 @@ fastify.get("/api/ytAudio/:videoId", async (request, reply) => {
 				"Accept-Encoding": "identity",
 				"Origin": "https://www.youtube.com",
 				"Referer": "https://www.youtube.com/",
-				...(rangeHeader ? { "Range": rangeHeader } : {}),
+				...(rangeHeader && rangeHeader !== "bytes=0-" ? { "Range": rangeHeader } : {}),
 			},
 			signal: AbortSignal.timeout(30000),
 		});

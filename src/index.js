@@ -90,51 +90,61 @@ fastify.get("/api/ytSearch", async (request, reply) => {
 	}
 });
 
-// ── YouTube audio via youtubei.js ─────────────────────────────────────
-import { Innertube } from "youtubei.js";
+// ── YouTube audio via Piped API ───────────────────────────────────────
+// Piped is an open-source YouTube frontend with its own proxy network.
+// Audio URLs are already proxied through Piped's servers — no IP issues.
 
-const _urlCache = new Map(); // videoId -> { url, mime, expires }
-let _yt = null;
+const _urlCache = new Map();
 
-async function getYT() {
-	if (!_yt) {
-		_yt = await Innertube.create({ retrieve_player: true });
-	}
-	return _yt;
-}
+const PIPED_INSTANCES = [
+	"https://pipedapi.kavin.rocks",
+	"https://piped-api.garudalinux.org",
+	"https://api.piped.yt",
+	"https://pipedapi.adminforge.de",
+	"https://piped-api.cateran.social",
+];
 
-async function innertubeGetAudio(videoId) {
+async function pipedGetAudio(videoId) {
 	const cached = _urlCache.get(videoId);
 	if (cached && cached.expires > Date.now()) {
-		console.log(`[ytjs] cache hit for ${videoId}`);
+		console.log(`[piped] cache hit for ${videoId}`);
 		return cached;
 	}
-	console.log(`[ytjs] fetching info for ${videoId}`);
-	const yt = await getYT();
-	const info = await yt.getInfo(videoId, 'ANDROID');
-	const status = info?.playability_status?.status;
-	console.log(`[ytjs] playability: ${status}`);
-	if (status && status !== 'OK') throw new Error('Video not playable: ' + status);
 
-	const formats = info?.streaming_data?.adaptive_formats || [];
-	const audioFormats = formats
-		.filter(f => f.mime_type?.startsWith('audio/') && f.url)
-		.sort((a, b) => (b.average_bitrate || b.bitrate || 0) - (a.average_bitrate || a.bitrate || 0));
+	let lastErr;
+	for (const instance of PIPED_INSTANCES) {
+		try {
+			console.log(`[piped] trying ${instance}`);
+			const res = await fetch(`${instance}/streams/${videoId}`, {
+				headers: { "User-Agent": "Mozilla/5.0" },
+				signal: AbortSignal.timeout(8000),
+			});
+			if (!res.ok) { console.log(`[piped] ${instance} returned ${res.status}`); continue; }
+			const data = await res.json();
+			if (data.error) { console.log(`[piped] ${instance} error: ${data.error}`); continue; }
 
-	if (!audioFormats.length) throw new Error('No audio formats found');
+			const audioStreams = (data.audioStreams || [])
+				.filter(s => s.url && !s.videoOnly)
+				.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
 
-	const best = audioFormats.find(f => f.itag === 140)
-		|| audioFormats.find(f => f.itag === 251)
-		|| audioFormats[0];
+			if (!audioStreams.length) { console.log(`[piped] ${instance} no audio streams`); continue; }
 
-	console.log(`[ytjs] ✓ itag=${best.itag} mime=${best.mime_type}`);
-	const result = {
-		url: best.url,
-		mime: best.mime_type?.split(';')[0] || 'audio/mp4',
-		expires: Date.now() + 5 * 60 * 60 * 1000,
-	};
-	_urlCache.set(videoId, result);
-	return result;
+			const best = audioStreams[0];
+			console.log(`[piped] ✓ ${instance} quality=${best.quality} mime=${best.mimeType}`);
+
+			const result = {
+				url: best.url,
+				mime: best.mimeType || "audio/mp4",
+				expires: Date.now() + 5 * 60 * 60 * 1000,
+			};
+			_urlCache.set(videoId, result);
+			return result;
+		} catch(e) {
+			console.log(`[piped] ${instance} failed: ${e.message}`);
+			lastErr = e;
+		}
+	}
+	throw lastErr || new Error("all Piped instances failed");
 }
 
 fastify.get("/api/ytAudio/:videoId", async (request, reply) => {
@@ -143,7 +153,7 @@ fastify.get("/api/ytAudio/:videoId", async (request, reply) => {
 		return reply.code(400).send({ error: "invalid videoId" });
 	}
 	try {
-		const { url: cdnUrl, mime } = await innertubeGetAudio(videoId);
+		const { url: cdnUrl, mime } = await pipedGetAudio(videoId);
 		const rangeHeader = request.headers["range"];
 		const cdnRes = await fetch(cdnUrl, {
 			headers: {

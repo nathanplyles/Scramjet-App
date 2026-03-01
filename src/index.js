@@ -90,61 +90,67 @@ fastify.get("/api/ytSearch", async (request, reply) => {
 	}
 });
 
-// ── YouTube audio via Piped API ───────────────────────────────────────
-// Piped is an open-source YouTube frontend with its own proxy network.
-// Audio URLs are already proxied through Piped's servers — no IP issues.
-
+// ── YouTube audio via InnerTube IOS client ────────────────────────────
 const _urlCache = new Map();
 
-const PIPED_INSTANCES = [
-	"https://pipedapi.kavin.rocks",
-	"https://piped-api.garudalinux.org",
-	"https://api.piped.yt",
-	"https://pipedapi.adminforge.de",
-	"https://piped-api.cateran.social",
-];
-
-async function pipedGetAudio(videoId) {
+async function innertubeGetAudio(videoId) {
 	const cached = _urlCache.get(videoId);
 	if (cached && cached.expires > Date.now()) {
-		console.log(`[piped] cache hit for ${videoId}`);
+		console.log(`[yt] cache hit for ${videoId}`);
 		return cached;
 	}
+	console.log(`[yt] fetching via IOS client for ${videoId}`);
+	const res = await fetch("https://www.youtube.com/youtubei/v1/player?prettyPrint=false", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"User-Agent": "com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 18_1_0 like Mac OS X;)",
+			"X-YouTube-Client-Name": "IOS",
+			"X-YouTube-Client-Version": "19.45.4",
+		},
+		body: JSON.stringify({
+			videoId,
+			context: {
+				client: {
+					clientName: "IOS",
+					clientVersion: "19.45.4",
+					deviceMake: "Apple",
+					deviceModel: "iPhone16,2",
+					osName: "iPhone",
+					osVersion: "18.1.0.22B83",
+				}
+			}
+		}),
+		signal: AbortSignal.timeout(10000),
+	});
+	const data = await res.json();
+	const status = data?.playabilityStatus?.status;
+	console.log(`[yt] playability: ${status}`);
+	if (status !== "OK") throw new Error("Video not playable: " + status);
 
-	let lastErr;
-	for (const instance of PIPED_INSTANCES) {
-		try {
-			console.log(`[piped] trying ${instance}`);
-			const res = await fetch(`${instance}/streams/${videoId}`, {
-				headers: { "User-Agent": "Mozilla/5.0" },
-				signal: AbortSignal.timeout(8000),
-			});
-			if (!res.ok) { console.log(`[piped] ${instance} returned ${res.status}`); continue; }
-			const data = await res.json();
-			if (data.error) { console.log(`[piped] ${instance} error: ${data.error}`); continue; }
+	const formats = [
+		...(data?.streamingData?.adaptiveFormats || []),
+		...(data?.streamingData?.formats || []),
+	];
 
-			const audioStreams = (data.audioStreams || [])
-				.filter(s => s.url && !s.videoOnly)
-				.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+	const audioFormats = formats
+		.filter(f => f.mimeType?.startsWith("audio/") && f.url)
+		.sort((a, b) => (b.averageBitrate || b.bitrate || 0) - (a.averageBitrate || a.bitrate || 0));
 
-			if (!audioStreams.length) { console.log(`[piped] ${instance} no audio streams`); continue; }
+	if (!audioFormats.length) throw new Error("No audio formats found");
 
-			const best = audioStreams[0];
-			console.log(`[piped] ✓ ${instance} quality=${best.quality} mime=${best.mimeType}`);
+	const best = audioFormats.find(f => f.itag === 140)
+		|| audioFormats.find(f => f.itag === 251)
+		|| audioFormats[0];
 
-			const result = {
-				url: best.url,
-				mime: best.mimeType || "audio/mp4",
-				expires: Date.now() + 5 * 60 * 60 * 1000,
-			};
-			_urlCache.set(videoId, result);
-			return result;
-		} catch(e) {
-			console.log(`[piped] ${instance} failed: ${e.message}`);
-			lastErr = e;
-		}
-	}
-	throw lastErr || new Error("all Piped instances failed");
+	console.log(`[yt] ✓ itag=${best.itag} mime=${best.mimeType}`);
+	const result = {
+		url: best.url,
+		mime: best.mimeType?.split(";")[0] || "audio/mp4",
+		expires: Date.now() + 5 * 60 * 60 * 1000,
+	};
+	_urlCache.set(videoId, result);
+	return result;
 }
 
 fastify.get("/api/ytAudio/:videoId", async (request, reply) => {
@@ -153,7 +159,7 @@ fastify.get("/api/ytAudio/:videoId", async (request, reply) => {
 		return reply.code(400).send({ error: "invalid videoId" });
 	}
 	try {
-		const { url: cdnUrl, mime } = await pipedGetAudio(videoId);
+		const { url: cdnUrl, mime } = await innertubeGetAudio(videoId);
 		const rangeHeader = request.headers["range"];
 		const cdnRes = await fetch(cdnUrl, {
 			headers: {

@@ -2577,26 +2577,68 @@ async function playTrack(track) {
 
   const tc = document.getElementById('toastContainer');
   tc.innerHTML = '';
-  toast('loading...', 'info', 10000);
+  toast('finding track...', 'info', 10000);
   try {
     const videoId = await findVideoId(track.artist, track.name);
     if (_playingId !== track.id) return;
     if (!videoId) { tc.innerHTML = ''; toast('not found on youtube', 'error', 3000); return; }
 
     tc.innerHTML = '';
-    toast('loading audio...', 'info', 15000);
-    const src = await getAudioSrc(videoId);
+    toast('fetching audio...', 'info', 30000);
+
+    // Pre-check the audio endpoint so yt-dlp errors (502 JSON) are caught
+    // before the audio element gets involved
+    const audioUrl = '/api/ytAudio/' + videoId;
+    const headCheck = await fetch(audioUrl, { method: 'GET', headers: { 'Range': 'bytes=0-0' }, signal: AbortSignal.timeout(28000) });
     if (_playingId !== track.id) return;
 
+    if (!headCheck.ok && headCheck.status !== 206) {
+      let errMsg = 'audio fetch failed (' + headCheck.status + ')';
+      try {
+        const ct = headCheck.headers.get('content-type') || '';
+        if (ct.includes('json')) {
+          const errData = await headCheck.json();
+          errMsg = errData.error || errMsg;
+        }
+      } catch(_) {}
+      tc.innerHTML = '';
+      toast('audio error: ' + errMsg.slice(0, 80), 'error', 5000);
+      console.error('[music] audio endpoint error:', headCheck.status, errMsg);
+      return;
+    }
+
+    if (_playingId !== track.id) return;
     tc.innerHTML = '';
+
     const audio = getAudio();
     audio.pause();
-    audio.src = src;
+    audio.src = audioUrl;
     audio.volume = musicVol / 100;
+
+    // Wait for canplay or error instead of fire-and-forget
+    await new Promise((resolve, reject) => {
+      const onCanPlay = () => { cleanup(); resolve(); };
+      const onError = () => {
+        cleanup();
+        const err = audio.error;
+        reject(new Error(err ? 'MediaError code ' + err.code : 'audio failed to load'));
+      };
+      const cleanup = () => {
+        audio.removeEventListener('canplay', onCanPlay);
+        audio.removeEventListener('error', onError);
+      };
+      audio.addEventListener('canplay', onCanPlay);
+      audio.addEventListener('error', onError);
+      if (audio.readyState >= 3) { cleanup(); resolve(); }
+    });
+
+    if (_playingId !== track.id) return;
     await audio.play();
     musicPlaying = true;
     updatePlayBtn();
+    tc.innerHTML = '';
   } catch(e) {
+    if (_playingId !== track.id) return;
     document.getElementById('toastContainer').innerHTML = '';
     toast('failed: ' + e.message, 'error', 4000);
     console.error('[music] playTrack error:', e);

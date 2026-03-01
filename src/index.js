@@ -93,12 +93,15 @@ fastify.get("/api/ytSearch", async (request, reply) => {
 // ── YouTube audio via yt-dlp ───────────────────────────────────────────
 import { spawn } from "node:child_process";
 
-const COOKIES_PATH = process.env.COOKIES_PATH || (process.env.RENDER ? "/app/cookies.txt" : new URL("../../cookies.txt", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1"));
-
-const BASE_ARGS = ["--get-url", "--no-playlist", "--no-warnings", "--cookies", COOKIES_PATH];
+const BASE_ARGS = [
+	"--get-url", "--no-playlist", "--no-warnings",
+	"--extractor-args", "youtube:player_client=ios",
+	"--add-header", "User-Agent:com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)",
+];
 const FORMAT_ATTEMPTS = [
 	["-f", "bestaudio"],
-	["-f", "worstaudio"],
+	["-f", "140"],
+	["-f", "251"],
 	[],
 ];
 

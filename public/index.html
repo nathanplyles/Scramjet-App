@@ -1646,17 +1646,14 @@ const sj = new ScramjetController({
 
     log('④ creating BareMuxConnection...', null);
     window._connection = new BareMux.BareMuxConnection('/baremux/worker.js');
-    await window._connection.setTransport('/libcurl/index.mjs', [{ wisp: 'wss://' + location.host + '/wisp/' }]);
+    await window._connection.setTransport('/libcurl/index.mjs', [{ websocket: 'wss://' + location.host + '/wisp/' }]);
     log('④ BareMuxConnection ✓', true);
 
-    log('⑤ registering service worker...', null);
+    log('⑤ service worker registered via sj.init ✓', true);
     try {
-      if ('serviceWorker' in navigator) {
-        const existing = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(existing.map(r => r.unregister()));
-      }
-      await navigator.serviceWorker.register('/sw.js');
-      log('⑤ service worker ✓', true);
+      // sw registered by sj.init above — just verify it
+      const reg = await navigator.serviceWorker.getRegistration('/sw.js');
+      log('⑤ service worker ✓', !!reg);
     } catch(e) {
       log('⑤ SW failed: ' + e.message, false);
     }

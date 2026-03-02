@@ -1636,15 +1636,17 @@ window._scramjetReady = (async () => {
 
     log('③ creating ScramjetController...', null);
     const { ScramjetController } = $scramjetLoadController();
-    const sj = new ScramjetController({
+const sj = new ScramjetController({
+      prefix: '/scramjet/',
       files: { wasm: '/scram/scramjet.wasm.wasm', all: '/scram/scramjet.all.js', sync: '/scram/scramjet.sync.js' },
     });
-    sj.init('/sw.js');
+    await sj.init('/sw.js');
     window._scramjet = sj;
     log('③ ScramjetController ✓', true);
 
     log('④ creating BareMuxConnection...', null);
     window._connection = new BareMux.BareMuxConnection('/baremux/worker.js');
+    await window._connection.setTransport('/libcurl/index.mjs', [{ wisp: 'wss://' + location.host + '/wisp/' }]);
     log('④ BareMuxConnection ✓', true);
 
     log('⑤ registering service worker...', null);

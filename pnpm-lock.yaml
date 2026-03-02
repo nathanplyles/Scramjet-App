@@ -18,8 +18,8 @@ importers:
         specifier: ^1.5.2
         version: 1.5.2
       '@mercuryworkshop/scramjet':
-        specifier: https://github.com/MercuryWorkshop/scramjet/releases/download/latest/mercuryworkshop-scramjet-2.0.0-alpha.tgz
-        version: https://github.com/MercuryWorkshop/scramjet/releases/download/latest/mercuryworkshop-scramjet-2.0.0-alpha.tgz
+        specifier: 2.0.0-alpha
+        version: 2.0.0-alpha
       '@mercuryworkshop/wisp-js':
         specifier: ^0.4.1
         version: 0.4.1(utf-8-validate@6.0.4)
@@ -29,6 +29,9 @@ importers:
       ws:
         specifier: ^8.18.3
         version: 8.18.3(bufferutil@4.1.0)(utf-8-validate@6.0.4)
+      youtubei.js:
+        specifier: ^16.0.1
+        version: 16.0.1
     devDependencies:
       eslint:
         specifier: ^9.13.0
@@ -38,6 +41,9 @@ importers:
         version: 3.3.3
 
 packages:
+
+  '@bufbuild/protobuf@2.11.0':
+    resolution: {integrity: sha512-sBXGT13cpmPR5BMgHE6UEEfEaShh5Ror6rfN3yEK5si7QVrtZg8LEPQb0VVhiLRUslD2yLnXtnRzG035J/mZXQ==}
 
   '@eslint-community/eslint-utils@4.4.1':
     resolution: {integrity: sha512-s3O3waFUrMV8P/XaF/+ZTp1X9XBZW1a4B97ZnjQF2KYWaFD2A8KyFBsrsfSjEmjn3RGWAIuvlneuZm3CUK3jbA==}
@@ -127,12 +133,14 @@ packages:
   '@mercuryworkshop/bare-mux@2.1.7':
     resolution: {integrity: sha512-BUamyc7jsIFbWQVVWjVjaD+Wot77EPwolkrbP3UuIs6QeHR1RY52+IR2fq3GkRAbOOrAZNT7EgZSsupkh1NowQ==}
 
+  '@mercuryworkshop/epoxy-tls@2.1.18-1':
+    resolution: {integrity: sha512-2N1BYn/+FJxIbRw+sipbl3mQPinRflqQDB9HGAXJEVj4Ok4FIlTlS4fO2cpXKEq5yoD3oaKb8GyNaQfndNui9w==}
+
   '@mercuryworkshop/libcurl-transport@1.5.2':
     resolution: {integrity: sha512-E0tD/3W6HE99ypc7CStpchU6xs+TP5u2vms/9q/46BShblB2pbRCNeXHBlvXqdz97nh2Xh4A68DryDt5CM29Dg==}
 
-  '@mercuryworkshop/scramjet@https://github.com/MercuryWorkshop/scramjet/releases/download/latest/mercuryworkshop-scramjet-2.0.0-alpha.tgz':
-    resolution: {tarball: https://github.com/MercuryWorkshop/scramjet/releases/download/latest/mercuryworkshop-scramjet-2.0.0-alpha.tgz}
-    version: 2.0.0-alpha
+  '@mercuryworkshop/scramjet@2.0.0-alpha':
+    resolution: {integrity: sha512-+tAWkKJX4rjsRMWW2vNckzXq3qn/rDcj6ohGJNSEn6O0jqvQvFSgDoCqwPaHjjmBSFXlh8MucL7Dpi0ZX5e/GA==}
 
   '@mercuryworkshop/wisp-js@0.4.1':
     resolution: {integrity: sha512-104LwiXiuhti/e32gmv0Da0u0yuLFDHX8JawCzleTPWJ5t5qTX4EYi4E7/ucbjBPN9wwVPWHE5g5yGqzl/NzQA==}
@@ -435,9 +443,6 @@ packages:
     resolution: {integrity: sha512-FtwrG/euBzaEjYeRqOgly7G0qviiXoJWnvEH2Z1plBdXgbyjv34pHTSb9zoeHMyDy33+DWy5Wt9Wo+TURtOYSQ==}
     engines: {node: '>= 0.8'}
 
-  idb@8.0.3:
-    resolution: {integrity: sha512-LtwtVyVYO5BqRvcsKuB2iUMnHwPVByPCXFXOpuU96IZPPoPN6xjOGxZQ74pgSVVLQWtUOYgyeL4GE98BY5D3wg==}
-
   ignore@5.3.2:
     resolution: {integrity: sha512-hsBTNUqQTDwkWtcdYI2i06Y/nUBEsNEDJKjWdigLvegy8kDuJAS8uRlpkkcQpyEXL0Z/pjDy5HBmMjRCJ2gq+g==}
     engines: {node: '>= 4'}
@@ -535,6 +540,10 @@ packages:
     resolution: {integrity: sha512-CgeuL5uom6j/ZVrg7G/+1IXqRY8JXX4Hghfy5YE0EhoYQWvndP1kufu58cmZLNIDKnRhZrXfdS9urVWx98AipQ==}
     engines: {node: 20 || >=22}
 
+  meriyah@6.1.4:
+    resolution: {integrity: sha512-Sz8FzjzI0kN13GK/6MVEsVzMZEPvOhnmmI1lU5+/1cGOiK3QUahntrNNtdVeihrO7t9JpoH75iMNXg6R6uWflQ==}
+    engines: {node: '>=18.0.0'}
+
   mime@3.0.0:
     resolution: {integrity: sha512-jSCU7/VB1loIWBZe14aEYHU/+1UMEHoaO7qxCOVJOw9GgH72VAWppxNcjU+x9a2k3GSIBXNKxXQFqRvvZ7vr3A==}
     engines: {node: '>=10.0.0'}
@@ -584,8 +593,8 @@ packages:
     resolution: {integrity: sha512-GQ2EWRpQV8/o+Aw8YqtfZZPfNRWZYkbidE9k5rpl/hC3vtHHBfGm2Ifi6qWV+coDGkrUKZAxE3Lot5kcsRlh+g==}
     engines: {node: '>=6'}
 
-  parse-domain@8.2.2:
-    resolution: {integrity: sha512-CoksenD3UDqphCHlXIcNh/TX0dsYLHo6dSAUC/QBcJRWJXcV5rc1mwsS4WbhYGu4LD4Uxc0v3ZzGo+OHCGsLcw==}
+  parse-domain@8.3.0:
+    resolution: {integrity: sha512-oOjqUI93wiFHJlywlOKU9FEw60Q0LMy8S1s/AhnVhCB9LZkwIsCIZfqujeJ16u7rRzLdTEY2OpxlGRhLdnNNYA==}
     hasBin: true
 
   path-exists@4.0.0:
@@ -792,7 +801,12 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
+  youtubei.js@16.0.1:
+    resolution: {integrity: sha512-3802bCAGkBc2/G5WUTc0l/bO5mPYJbQAHL04d9hE9PnrDHoBUT8MN721Yqt4RCNncAXdHcfee9VdJy3Fhq1r5g==}
+
 snapshots:
+
+  '@bufbuild/protobuf@2.11.0': {}
 
   '@eslint-community/eslint-utils@4.4.1(eslint@9.13.0)':
     dependencies:
@@ -899,19 +913,20 @@ snapshots:
 
   '@mercuryworkshop/bare-mux@2.1.7': {}
 
+  '@mercuryworkshop/epoxy-tls@2.1.18-1': {}
+
   '@mercuryworkshop/libcurl-transport@1.5.2':
     dependencies:
       libcurl.js: 0.7.4
 
-  '@mercuryworkshop/scramjet@https://github.com/MercuryWorkshop/scramjet/releases/download/latest/mercuryworkshop-scramjet-2.0.0-alpha.tgz':
+  '@mercuryworkshop/scramjet@2.0.0-alpha':
     dependencies:
-      '@mercuryworkshop/bare-mux': 2.1.7
+      '@mercuryworkshop/epoxy-tls': 2.1.18-1
       dom-serializer: 2.0.0
       domhandler: 5.0.3
       domutils: 3.2.2
       htmlparser2: 10.0.0
-      idb: 8.0.3
-      parse-domain: 8.2.2
+      parse-domain: 8.3.0
       set-cookie-parser: 2.7.1
 
   '@mercuryworkshop/wisp-js@0.4.1(utf-8-validate@6.0.4)':
@@ -1242,8 +1257,6 @@ snapshots:
       statuses: 2.0.1
       toidentifier: 1.0.1
 
-  idb@8.0.3: {}
-
   ignore@5.3.2: {}
 
   import-fresh@3.3.0:
@@ -1323,6 +1336,8 @@ snapshots:
 
   lru-cache@11.0.1: {}
 
+  meriyah@6.1.4: {}
+
   mime@3.0.0: {}
 
   minimatch@10.0.1:
@@ -1366,7 +1381,7 @@ snapshots:
     dependencies:
       callsites: 3.1.0
 
-  parse-domain@8.2.2:
+  parse-domain@8.3.0:
     dependencies:
       is-ip: 5.0.1
 
@@ -1538,3 +1553,8 @@ snapshots:
       utf-8-validate: 6.0.4
 
   yocto-queue@0.1.0: {}
+
+  youtubei.js@16.0.1:
+    dependencies:
+      '@bufbuild/protobuf': 2.11.0
+      meriyah: 6.1.4

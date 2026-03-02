@@ -1636,17 +1636,39 @@ window._scramjetReady = (async () => {
 
     log('③ creating ScramjetController...', null);
     const { ScramjetController } = $scramjetLoadController();
+<<<<<<< HEAD
 const sj = new ScramjetController({
       prefix: '/scramjet/',
       files: { wasm: '/scram/scramjet.wasm.wasm', all: '/scram/scramjet.all.js', sync: '/scram/scramjet.sync.js' },
     });
+=======
+    const sj = new ScramjetController({
+      prefix: '/scramjet/',
+      files: { wasm: '/scram/scramjet.wasm.wasm', all: '/scram/scramjet.all.js', sync: '/scram/scramjet.sync.js' },
+    });
+    await new Promise((resolve, reject) => {
+      const r = indexedDB.open('$scramjet', 1);
+      r.onupgradeneeded = e => {
+        const db = e.target.result;
+        ['config','cookies','redirectTrackers','referrerPolicies','publicSuffixList'].forEach(s => {
+          if (!db.objectStoreNames.contains(s)) db.createObjectStore(s);
+        });
+      };
+      r.onsuccess = resolve;
+      r.onerror = reject;
+    });
+>>>>>>> cb136b1f0ccfcb122928c9d4dc1a553f5426b685
     await sj.init('/sw.js');
     window._scramjet = sj;
     log('③ ScramjetController ✓', true);
 
     log('④ creating BareMuxConnection...', null);
     window._connection = new BareMux.BareMuxConnection('/baremux/worker.js');
+<<<<<<< HEAD
     await window._connection.setTransport('/libcurl/index.mjs', [{ websocket: 'wss://' + location.host + '/wisp/' }]);
+=======
+    await window._connection.setTransport('/libcurl/index.mjs', [{ wisp: 'wss://' + location.host + '/wisp/' }]);
+>>>>>>> cb136b1f0ccfcb122928c9d4dc1a553f5426b685
     log('④ BareMuxConnection ✓', true);
 
     log('⑤ service worker registered via sj.init ✓', true);
@@ -2022,13 +2044,13 @@ async function browserNavigate(url, rawQuery) {
     const wispUrl = (location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/wisp/';
     if ((await connection.getTransport()) !== '/libcurl/index.mjs') {
       toast('connecting...', 'info', 1500);
-      await connection.setTransport('/libcurl/index.mjs', [{ websocket: wispUrl }]);
+      await connection.setTransport('/libcurl/index.mjs', [{ wisp: wispUrl }]);
     }
     tab.frame.innerHTML = '';
     const sjFrame = scramjet.createFrame();
     sjFrame.frame.style.cssText = 'width:100%;height:100%;border:none;';
     tab.frame.appendChild(sjFrame.frame);
-    sjFrame.go(val);
+    sjFrame.go(scramjet.encodeUrl(val));
     tab.url = val;
     try { tab.title = new URL(val).hostname; } catch(e) { tab.title = val.slice(0,20); }
     document.getElementById('browserAddr').value = val;

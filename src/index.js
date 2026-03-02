@@ -4,10 +4,13 @@ import { hostname } from "node:os";
 import { server as wisp, logging } from "@mercuryworkshop/wisp-js/server";
 import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
-
 import { scramjetPath } from "@mercuryworkshop/scramjet/path";
 import { libcurlPath } from "@mercuryworkshop/libcurl-transport";
 import { baremuxPath } from "@mercuryworkshop/bare-mux/node";
+import { spawn } from "node:child_process";
+import { existsSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const publicPath = fileURLToPath(new URL("../public/", import.meta.url));
 
@@ -38,7 +41,6 @@ fastify.register(fastifyStatic, { root: scramjetPath, prefix: "/scram/", decorat
 fastify.register(fastifyStatic, { root: libcurlPath, prefix: "/libcurl/", decorateReply: false });
 fastify.register(fastifyStatic, { root: baremuxPath, prefix: "/baremux/", decorateReply: false });
 
-//  Last.fm proxy 
 fastify.get("/api/lastfm", async (request, reply) => {
 	const key = process.env.LASTFM_API_KEY;
 	if (!key) return reply.code(503).send({ error: "LASTFM_API_KEY not set" });
@@ -53,7 +55,6 @@ fastify.get("/api/lastfm", async (request, reply) => {
 	}
 });
 
-//  iTunes proxy 
 fastify.get("/api/itunes", async (request, reply) => {
 	try {
 		const qs = request.raw.url.slice("/api/itunes?".length);
@@ -71,7 +72,6 @@ fastify.get("/api/itunes", async (request, reply) => {
 	}
 });
 
-//  YouTube search 
 fastify.get("/api/ytSearch", async (request, reply) => {
 	try {
 		const q = request.query.q || "";
@@ -90,20 +90,8 @@ fastify.get("/api/ytSearch", async (request, reply) => {
 	}
 });
 
-//  YouTube audio via yt-dlp 
-import { spawn } from "node:child_process";
-<<<<<<< HEAD
-import { existsSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-=======
-import { existsSync } from "node:fs";
->>>>>>> d72ddf5682f1805041e2874d9612556db00f0012
-import { fileURLToPath } from "url";
-
 const _urlCache = new Map();
 
-<<<<<<< HEAD
 const _cookiesPath = (() => {
 	if (process.env.YT_COOKIES) {
 		const tmp = join(tmpdir(), "yt_cookies.txt");
@@ -118,27 +106,6 @@ const _cookiesPath = (() => {
 		fileURLToPath(new URL("../../cookies.txt", import.meta.url)).replace(/^\/([A-Z]:)/, "$1"),
 		"cookies.txt",
 	].filter(Boolean);
-=======
-// Write cookies from env var OR find cookies.txt file
-import { writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-
-const _cookiesPath = (() => {
-	// First check env var (Render environment variable)
-	if (process.env.YT_COOKIES) {
-		const tmp = join(tmpdir(), "yt_cookies.txt");
-		writeFileSync(tmp, process.env.YT_COOKIES, "utf8");
-		console.log(`[yt-dlp] cookies: loaded from YT_COOKIES env var → ${tmp}`);
-		return tmp;
-	}
-	// Fall back to file
-	const candidates = [
-		"/app/cookies.txt",
-		fileURLToPath(new URL("../../cookies.txt", import.meta.url)).replace(/^\/([A-Z]:)/, "$1"),
-		"cookies.txt",
-	];
->>>>>>> d72ddf5682f1805041e2874d9612556db00f0012
 	const found = candidates.find(p => { try { return existsSync(p); } catch { return false; } }) || null;
 	console.log(`[yt-dlp] cookies: ${found || "none"}`);
 	return found;
@@ -150,47 +117,22 @@ const YT_DLP_ARGS = [
 	"--no-playlist",
 	"--no-warnings",
 	"--js-runtimes", "node",
-<<<<<<< HEAD
 	...(_cookiesPath ? ["--cookies", _cookiesPath] : []),
 ];
 
 function trySpawn(cmd, args) {
 	return new Promise((resolve, reject) => {
 		const proc = spawn(cmd, args, { shell: false });
-=======
-	// Use browser cookies locally (always fresh), fall back to file on Render
-	...(process.env.RENDER
-		? (_cookiesPath ? ["--cookies", _cookiesPath] : [])
-		: ["--cookies-from-browser", "chrome"]
-	),
-];
-
-function trySpawn(cmd, videoId) {
-	return new Promise((resolve, reject) => {
-		const args = [...(cmd.includes("yt_dlp") ? ["-m", "yt_dlp"] : []), ...YT_DLP_ARGS, `https://www.youtube.com/watch?v=${videoId}`];
-		const bin = cmd.includes("yt_dlp") ? cmd.split(" ")[0] : cmd;
-		console.log(`[yt-dlp] spawning: ${bin} ${args.slice(0,4).join(" ")}...`);
-		const proc = spawn(bin, cmd.includes("yt_dlp") ? args : [...YT_DLP_ARGS, `https://www.youtube.com/watch?v=${videoId}`], { shell: false });
->>>>>>> d72ddf5682f1805041e2874d9612556db00f0012
 		let out = "", err = "";
 		proc.stdout.on("data", d => out += d);
 		proc.stderr.on("data", d => err += d);
 		proc.on("close", code => {
-<<<<<<< HEAD
-			const url = out.trim().split("
-")[0].trim();
-=======
 			const url = out.trim().split("\n")[0].trim();
->>>>>>> d72ddf5682f1805041e2874d9612556db00f0012
 			if (code === 0 && url.startsWith("http")) resolve(url);
 			else reject(Object.assign(new Error(err.trim().slice(0, 300) || "exit " + code), { isEnoent: false }));
 		});
 		proc.on("error", e => reject(Object.assign(new Error("ENOENT"), { isEnoent: true })));
-<<<<<<< HEAD
 		setTimeout(() => { try { proc.kill(); } catch {} reject(new Error("timeout")); }, 60000);
-=======
-		setTimeout(() => { try { proc.kill(); } catch {} reject(new Error("timeout")); }, 30000);
->>>>>>> d72ddf5682f1805041e2874d9612556db00f0012
 	});
 }
 
@@ -200,7 +142,6 @@ async function ytdlpGetUrl(videoId) {
 		console.log(`[yt-dlp] cache hit for ${videoId}`);
 		return cached.url;
 	}
-<<<<<<< HEAD
 	const ytUrl = `https://www.youtube.com/watch?v=${videoId}`;
 	const cmds = [
 		["python3", ["-m", "yt_dlp", ...YT_DLP_ARGS, ytUrl]],
@@ -213,24 +154,13 @@ async function ytdlpGetUrl(videoId) {
 		try {
 			console.log(`[yt-dlp] trying: ${cmd}`);
 			const url = await trySpawn(cmd, args);
-			console.log(`[yt-dlp] ✓ got url`);
-=======
-	const cmds = ["py -m yt_dlp", "yt-dlp", "python3 -m yt_dlp", "python -m yt_dlp"];
-	let lastErr;
-	for (const cmd of cmds) {
-		try {
-			const url = await trySpawn(cmd, videoId);
-			console.log(`[yt-dlp] ✓ got url via ${cmd}`);
->>>>>>> d72ddf5682f1805041e2874d9612556db00f0012
+			console.log(`[yt-dlp] got url`);
 			_urlCache.set(videoId, { url, expires: Date.now() + 4 * 60 * 60 * 1000 });
 			return url;
 		} catch(e) {
 			if (e.isEnoent) continue;
 			lastErr = e;
-<<<<<<< HEAD
 			break;
-=======
->>>>>>> d72ddf5682f1805041e2874d9612556db00f0012
 		}
 	}
 	throw lastErr || new Error("yt-dlp not found");
@@ -242,7 +172,8 @@ fastify.get("/api/ytAudio/:videoId", async (request, reply) => {
 		return reply.code(400).send({ error: "invalid videoId" });
 	}
 	try {
-		const cdnUrl = await ytdlpGetUrl(videoId); const mime = "audio/mp4";
+		const cdnUrl = await ytdlpGetUrl(videoId);
+		const mime = "audio/mp4";
 		const rangeHeader = request.headers["range"];
 		const cdnRes = await fetch(cdnUrl, {
 			headers: {
@@ -251,17 +182,14 @@ fastify.get("/api/ytAudio/:videoId", async (request, reply) => {
 				"Accept-Encoding": "identity",
 				"Origin": "https://www.youtube.com",
 				"Referer": "https://www.youtube.com/",
-				...(rangeHeader && rangeHeader !== "bytes=0-" ? { "Range": rangeHeader } : {}),
+				...(rangeHeader ? { "Range": rangeHeader } : {}),
 			},
 			signal: AbortSignal.timeout(30000),
 		});
-
 		if (!cdnRes.ok && cdnRes.status !== 206) {
-			// URL may have expired — clear cache and return error
 			_urlCache.delete(videoId);
 			return reply.code(502).send({ error: "CDN " + cdnRes.status });
 		}
-
 		const ct = cdnRes.headers.get("content-type") || mime;
 		const cl = cdnRes.headers.get("content-length");
 		const cr = cdnRes.headers.get("content-range");
@@ -283,7 +211,6 @@ fastify.get("/api/ytProxy", async (request, reply) => {
 	reply.code(410).send({ error: "deprecated" });
 });
 
-//  Image proxy 
 fastify.get("/api/img/*", async (request, reply) => {
 	try {
 		const imgPath = request.raw.url.slice("/api/img/".length);
@@ -302,7 +229,6 @@ fastify.get("/api/img/*", async (request, reply) => {
 	}
 });
 
-//  LRCLIB lyrics proxy 
 fastify.get("/api/lyrics", async (request, reply) => {
 	try {
 		const { track, artist, album, duration } = request.query;
@@ -327,26 +253,10 @@ fastify.get("/api/lyrics", async (request, reply) => {
 	}
 });
 
-//  AI proxy (Cerebras → Groq → Gemini Flash-Lite fallback chain) 
 const AI_PROVIDERS = [
-	{
-		name: "cerebras",
-		envKey: "CEREBRAS_API_KEY",
-		url: "https://api.cerebras.ai/v1/chat/completions",
-		model: "llama-3.3-70b",
-	},
-	{
-		name: "groq",
-		envKey: "GROQ_API_KEY",
-		url: "https://api.groq.com/openai/v1/chat/completions",
-		model: "llama-3.3-70b-versatile",
-	},
-	{
-		name: "gemini",
-		envKey: "GEMINI_API_KEY",
-		url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-		model: "gemini-2.0-flash-lite",
-	},
+	{ name: "cerebras", envKey: "CEREBRAS_API_KEY", url: "https://api.cerebras.ai/v1/chat/completions", model: "llama-3.3-70b" },
+	{ name: "groq", envKey: "GROQ_API_KEY", url: "https://api.groq.com/openai/v1/chat/completions", model: "llama-3.3-70b-versatile" },
+	{ name: "gemini", envKey: "GEMINI_API_KEY", url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", model: "gemini-2.0-flash-lite" },
 ];
 
 async function tryAIProvider(provider, messages, maxTokens) {
@@ -354,10 +264,7 @@ async function tryAIProvider(provider, messages, maxTokens) {
 	if (!key) throw new Error("no key configured");
 	const res = await fetch(provider.url, {
 		method: "POST",
-		headers: {
-			"Authorization": "Bearer " + key,
-			"Content-Type": "application/json",
-		},
+		headers: { "Authorization": "Bearer " + key, "Content-Type": "application/json" },
 		body: JSON.stringify({ model: provider.model, messages, max_tokens: maxTokens, stream: false }),
 		signal: AbortSignal.timeout(20000),
 	});
